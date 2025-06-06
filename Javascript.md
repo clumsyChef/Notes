@@ -134,3 +134,25 @@
 
    console.log(Symbol.keyFor(symOne), Symbol.keyFor(symTwo)); // "one", "two"
    ```
+
+### Garbage collection:
+
+1.  It happens automatically in javascript, unlike some low level languages.
+2.  Its all about reachability. If some value is not reachable in the object tree it is garbage collected.
+3.  Any value is considered reachable if it can be reached from root by a reference or by chain of references.
+    ```js
+    const user = { name: "one" };
+    const anotherUser = user;
+    user = null;
+    console.log(anotherUser); // {name: "one"}
+    ```
+    now above the object is still reachable through anotherUser variable so its not garbage collected.
+4.  Main algorithm which is used in called "Mark-and-Sweep". As the names suggests, it starts from root and mark (remembers) it, then it goes to every node which can be visited through reference and marks them as well. It keeps doing this untill every reachable node is marked. Then the remaining unmarked are removed from the memory.
+5.  There are some optimizations done by javascript engines to make the process of garbage collection faster and not introduce any delays into the code execution.
+    Below are some of those optimizations:
+
+    - **General collection:** Objects are grouped as "old" and "new". New objects are checked often because most die quickly, old ones are checked less often to save time. New ones, if used again ana again is then put in that old category so they are also checked less often.
+    - **Incremental Collection:** Memmory is cleaned in small parts, not all at once. This avoids big pauses during the code execution. So we, user, don't notice any pause.
+    - **Idle-time Collection:** Cleaning happens when CPU is idle. This reduces any slowdown in running code.
+
+      There are more optimizations, but these are main.
