@@ -1,4 +1,4 @@
-# Javascript Notes
+# <center>Javascript Notes</center>
 
 ### "this" keyword:
 
