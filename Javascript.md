@@ -1,6 +1,6 @@
 # Javascript Notes
 
-## "this" keyword:
+### <ins>"this" keyword</ins>:
 
 1.  in global space value of "this" depends on global object which can be acccessed through "globalThis" keyword. Now value of globalThis depends on different environments, like in DOM it is window.
 2.  Inside functions it depends on strict or non strict mode.
