@@ -392,6 +392,49 @@ console.log(obj + 2); // "22" ("2" + 2), conversion to primitive returned a stri
 
    But as we know map can have object as keys, so if we create object from such a map, key will be `[object Object]`.
 
+### Set
+
+1. In a Set a value can accur only once. Its main methods are
+
+   - `new Set([iterable])` – creates the set, and if an iterable object is provided (usually an array), copies values from it into the set.
+   - `set.add(value)` – adds a value, returns the set itself.
+   - `set.delete(value)` – removes the value, returns true if value existed at the moment of the call, otherwise false.
+   - `set.has(value)` – returns true if the value exists in the set, otherwise false.
+   - `set.clear()` – removes everything from the set.
+   - `set.size` – is the elements count.
+
+   ```js
+   const mySet = new Set();
+   mySet.add("one");
+   mySet.add("two");
+   mySet.add("one");
+   for (const val of mySet) {
+   	console.log(val); // one -> two.
+   }
+   // one won't be repeated again.
+   ```
+
+   Alternative to above is using array, but we would need to check the value inside itby `arr.find(...)` so the performance would be bad.
+
+2. Iteration of `Set`:
+
+   ```js
+   let set = new Set(["oranges", "apples", "bananas"]);
+
+   for (let value of set) console.log(value);
+
+   // the same with forEach:
+   set.forEach((value, valueAgain, set) => {
+   	console.log(value, valueAgain, set);
+   });
+   ```
+
+   In above 3 arguments are passed, set returns the set itself. But why we have value twice? Its to make it compatible with `Map`. This is strange, but in some scenarios this helps replacing `Map` with `Set` and vice-versa.
+
+   - `set.keys()` – returns an iterable object for values,
+   - `set.values()` – same as set.keys(), for compatibility with Map,
+   - `set.entries()` – returns an iterable object for entries [value, value], exists for compatibility with Map.
+
 ### WeakMap
 
 1. We know if object is reachable it won't be garbage collected.
@@ -435,4 +478,237 @@ console.log(obj + 2); // "22" ("2" + 2), conversion to primitive returned a stri
    - If we are using some other data like a third party library, and we want to associate some data with it but only untill the third party library data is present, then we can use WeakMap. As if the third party library data is removed, its associated value will also be removed from the WeakMap.
    - In Caching. Using Maps, lets say we have an object and we want to associate some data with it. But in the future that object is removed, but it wont be garbage collected and its association will still be present in the ccache. On the other hand if we use WeakMap for caching, once the object is garbage collected, its associated data will also get removed from cache.
 
-### Set
+### WeakSet
+
+1. `WeakSet` are kinda similar to `WeakMap` such that.
+
+   - It is analogous to Set, but we may only add objects to `WeakSet` (not primitives).
+   - An object exists in the set while it is reachable from somewhere else.
+   - Like Set, it supports `add`, `has` and `delete`, but not `size`, `keys()` and no iterations.
+
+   ```js
+   let visitedSet = new WeakSet();
+
+   let john = { name: "John" };
+   let pete = { name: "Pete" };
+   let mary = { name: "Mary" };
+
+   visitedSet.add(john);
+   visitedSet.add(pete);
+   visitedSet.add(john);
+
+   console.log(visitedSet.has(john)); // true
+   john = null;
+   console.log(visitedSet.has(john)); // false
+   ```
+
+### JSON
+
+1. We have 2 main methods to convert things to JSON and vice-versa.
+
+   - `JSON.stringify(...)`
+   - `JSON.parse(...)`
+
+   **JSON.stringify(...):**
+
+   ```js
+   const user = { name: "John", age: 20 };
+   const str = JSON.stringify(user); // {"name": "John", "age": 20}
+   ```
+
+   Now JSON converts everything to string and it wraps them in double quotes.
+   It supports following data types:
+
+   - Objects
+   - Arrays
+   - primitives:
+     - strings
+     - numbers
+     - booleans
+     - null
+
+   JSON is data only language independent specification, so some javascript object properties are skipped, mainly
+
+   - functions
+   - Symbolic keys and values
+   - properties that store undefined.
+
+   ```js
+   let user = {
+   	sayHi() {
+   		// ignored
+   		alert("Hello");
+   	},
+   	[Symbol("id")]: 123, // ignored
+   	something: undefined, // ignored
+   };
+
+   console.log(JSON.stringify(user)); // {} (empty object)
+   ```
+
+   Nested objects are automatically converted. The only limitation? Circular references are skipped.
+
+   ```js
+   let room = {
+   	number: 23,
+   };
+
+   let meetup = {
+   	title: "Conference",
+   	participants: ["john", "ann"],
+   };
+
+   meetup.place = room; // meetup references room
+   room.occupiedBy = meetup; // room references meetup
+
+   JSON.stringify(room); // Error: Converting circular structure to JSON
+   ```
+
+   Full syntax: **`JSON.stringify(value[,replacer, space])`**
+
+   - **value:** value to encode
+   - **replacer:** array of properties to encode or mapping functions `function(key, value)`
+   - **space:** amount of space to use for formatting
+
+   ```js
+   let room = {
+   	number: 23,
+   };
+
+   let meetup = {
+   	title: "Conference",
+   	participants: [{ name: "John" }, { name: "Alice" }],
+   	place: room, // meetup references room
+   };
+
+   room.occupiedBy = meetup; // room references meetup
+
+   console.log(JSON.stringify(meetup, ["title", "participants"]));
+   // {"title":"Conference","participants":[{},{}]}
+   ```
+
+   The property list is applied to the whole object structure. So the objects in participants are empty, because name is not in the list.
+   To include "name" pass "name" in array also.
+
+   Now lets say object is too big and we just want to remove couple of properties, then we can use replacer function.
+
+   ```js
+   let room = {
+   	number: 23,
+   };
+
+   let meetup = {
+   	title: "Conference",
+   	participants: [{ name: "John" }, { name: "Alice" }],
+   	place: room, // meetup references room
+   };
+
+   room.occupiedBy = meetup; // room references meetup
+
+   alert(
+   	JSON.stringify(meetup, function replacer(key, value) {
+   		alert(`${key}: ${value}`);
+   		return key == "occupiedBy" ? undefined : value;
+   	})
+   );
+
+   /* key:value pairs that come to replacer:
+      :             [object Object]
+      title:        Conference
+      participants: [object Object],[object Object]
+      0:            [object Object]
+      name:         John
+      1:            [object Object]
+      name:         Alice
+      place:        [object Object]
+      number:       23
+      occupiedBy: [object Object]
+   */
+   ```
+
+   The first call is special. It is made using a special “wrapper object”: {"": meetup}. In other words, the first (key, value) pair has an empty key, and the value is the target object as a whole. That’s why the first line is ":[object Object]" in the example above.
+
+   **Custom toJSON:**
+
+   ```js
+   let room = {
+   	number: 23,
+   };
+
+   let meetup = {
+   	title: "Conference",
+   	date: new Date(Date.UTC(2017, 0, 1)),
+   	room,
+   };
+
+   alert(JSON.stringify(meetup));
+   /*
+   {
+      "title":"Conference",
+      "date":"2017-01-01T00:00:00.000Z",  // (1)
+      "room": {"number":23}               // (2)
+   }
+   */
+   ```
+
+   Here we can see that date (1) became a string. That’s because all dates have a built-in toJSON method which returns such kind of string.
+
+   Now let’s add a custom toJSON for our object room (2):
+
+   ```js
+   let room = {
+   	number: 23,
+   	toJSON() {
+   		return this.number;
+   	},
+   };
+
+   let meetup = {
+   	title: "Conference",
+   	room,
+   };
+
+   alert(JSON.stringify(room)); // 23
+
+   alert(JSON.stringify(meetup));
+   /*
+   {
+      "title":"Conference",
+      "room": 23
+   }
+   */
+   ```
+
+   **JSON.parse(...):**
+
+   - Syntax: **`let value = JSON.parse(str[, reviver]);`**
+
+   ```js
+   const obj = { one: 1, two: 2, three: 3, four: 4 };
+   const s = JSON.stringify(obj);
+
+   const j = JSON.parse(s, (key, value) => {
+   	return key === "three" ? undefined : value;
+   });
+   ```
+
+   ```js
+   let str = '{"title":"Conference","date":"2017-11-30T12:00:00.000Z"}';
+
+   let meetup = JSON.parse(str);
+
+   console.log(meetup.date.getDate()); // Error!
+   ```
+
+   ```js
+   let str = '{"title":"Conference","date":"2017-11-30T12:00:00.000Z"}';
+
+   let meetup = JSON.parse(str, function (key, value) {
+   	if (key == "date") return new Date(value);
+   	return value;
+   });
+
+   console.log(meetup.date.getDate()); // now works!
+   ```
+
+---
