@@ -107,7 +107,7 @@
    ```js
    let sym = Symbol("sym");
    let user = {
-   	name: "Saarthak",
+   	name: "Sarthak",
    	[sym]: 123,
    };
 
@@ -156,3 +156,283 @@
     - **Idle-time Collection:** Cleaning happens when CPU is idle. This reduces any slowdown in running code.
 
       There are more optimizations, but these are main.
+
+### Transpilers and Polyfills
+
+New syntax and features of languages don't work with older engines or browsers, to tackle this issue there are 2 tools that are used:
+
+- **Transpilers**
+- **Polyfills**
+
+1. **Transpilers** are the piece of softwares that translates the source code to another source code. It means it takes modern syntax and rewrite it using older syntax so that older browsers can understand it.
+   Eg. 'nullish coalescing operator' didn't existed in older version or Javascript, so it takes that and converts it into something else.
+
+   ```js
+   // before running the transpiler
+   const height = height ?? 100;
+
+   // after running the transpiler
+   const height = height !== undefined && height !== null ? height : 100;
+   ```
+
+   Usually programmers runs the transpilers in their own computer and deploys the transpiled code to the server.
+
+   **Babel** is one of the most used transpilers.
+
+2. **Polyfills** are softwares that take new features and rewrites them in older ways. Eg. `Math.trunc` don't work in older engines so a polyfill will be created such that it will convert it to older syntax.
+   ```js
+   if (!Math.trunc) {
+   	// if no such function
+   	// implement it
+   	Math.trunc = function (number) {
+   		// Math.ceil and Math.floor exist even in ancient JavaScript engines
+   		// they are covered later in the tutorial
+   		return number < 0 ? Math.ceil(number) : Math.floor(number);
+   	};
+   }
+   ```
+
+### Object to primitive conversions
+
+1. functions like `alert(...)` or `String(...)` expects string to be passed, but happens when we pass object instead of strings? It gets auto converted to primitive values.
+2. There are 7 primitive types: `string`, `number`, `bigint`, `boolean`, `symbol`, `null` and `undefined`.
+3. All objects are `true` when converted to boolean.
+4. Numeric happens when we apply mathematical functions, like subtracting dates to get the difference.
+5. String conversion happens when we try to output the object with like `alert(user)`.
+   How does javascript decide which conversion to apply?: **Hints**
+   There are 3 hints "string", "number", "default".
+
+   1. "string" is used when we do operations that expects "string" argument like alert
+   2. same thing with "number", when math is being done.
+   3. "default" its a rare case, happens when operator is not sure what to use. Eg. "+" can be used with string and numbers both, same goes with `==`, `> <.
+
+6. All built-in objects except for one case (Date object, we’ll learn it later) implement "default" conversion the same way as "number".
+7. To do the conversion, JavaScript tries to find and call three object methods:
+   1. Call `obj[Symbol.toPrimitive](hint)` – the method with the symbolic key Symbol.toPrimitive (system symbol), if such method exists.
+   2. Otherwise if hint is "string", try calling obj.toString() or obj.valueOf(), whatever exists.
+   3. Otherwise if hint is "number" or "default", try calling obj.valueOf() or obj.toString(), whatever exists.
+8. **Symbol.toPrimitive:**
+
+   ```js
+   let user = {
+   	name: "John",
+   	money: 1000,
+
+   	[Symbol.toPrimitive](hint) {
+   		console.log(`hint: ${hint}`);
+   		return hint == "string" ? `{name: "${this.name}"}` : this.money;
+   	},
+   };
+
+   // conversions demo:
+   console.log(user); // hint: string -> {name: "John"}
+   console.log(+user); // hint: number -> 1000
+   console.log(user + 500); // hint: default -> 1500
+   ```
+
+9. If no `Symbol.toPrimitive` is there then javascript tries to find `toString` and `valueOf` methods.
+
+   1. For the "string" hint: call toString method, and if it doesn’t exist or if it returns an object instead of a primitive value, then call valueOf (so toString has the priority for string conversions).
+   2. For other hints: call valueOf, and if it doesn’t exist or if it returns an object instead of a primitive value, then call toString (so valueOf has the priority for maths).
+   3. By default, a plain object has following toString and valueOf methods:
+      - The toString method returns a string "[object Object]".
+      - The valueOf method returns the object itself.
+
+   We can overwrite the `toString` and `valueOf`. Below eg. we will overwrite it to make sure it works like it normally works
+
+   ```js
+   let user = {
+   	name: "John",
+   	money: 1000,
+
+   	// for hint="string"
+   	toString() {
+   		return `{name: "${this.name}"}`;
+   	},
+
+   	// for hint="number" or "default"
+   	valueOf() {
+   		return this.money;
+   	},
+   };
+
+   console.log(user); // toString -> {name: "John"}
+   console.log(+user); // valueOf -> 1000
+   console.log(user + 500); // valueOf -> 1500
+   ```
+
+10. A conversion can return any type, like `toString` don't actually have to return "string". Then only mandatory thing it these methods must return a primitive.
+11. As we know already, many operators and functions perform type conversions, e.g. multiplication \* converts operands to numbers.
+
+If we pass an object as an argument, then there are two stages of calculations:
+
+1.  The object is converted to a primitive (using the rules described above).
+2.  If necessary for further calculations, the resulting primitive is also converted.
+
+```js
+let obj = {
+	// toString handles all conversions in the absence of other methods
+	toString() {
+		return "2";
+	},
+};
+
+console.log(obj * 2); // 4, object converted to primitive "2", then multiplication made it a number
+```
+
+```js
+let obj = {
+	toString() {
+		return "2";
+	},
+};
+
+console.log(obj + 2); // "22" ("2" + 2), conversion to primitive returned a string => concatenation
+```
+
+### Map
+
+1. Map are like objects but main difference is it allows keys of any types. Below are the methods that can be applied to a Map.
+
+   - `new Map()` – creates the map.
+   - `map.set(key, value)` – stores the value by the key.
+   - `map.get(key)` – returns the value by the key, undefined if key doesn’t exist in map.
+   - `map.has(key)` – returns true if the key exists, false otherwise.
+   - `map.delete(key)` – removes the element (the key/value pair) by the key.
+   - `map.clear()` – removes everything from the map.
+   - `map.size` – returns the current element count.
+
+   ```js
+   let map = new Map();
+
+   map.set("1", "str1"); // a string key
+   map.set(1, "num1"); // a numeric key
+   map.set(true, "bool1"); // a boolean key
+
+   // remember the regular Object? it would convert keys to string
+   // Map keeps the type, so these two are different:
+   console.log(map.get(1)); // 'num1'
+   console.log(map.get("1")); // 'str1'
+
+   console.log(map.size); // 3
+   ```
+
+2. Using objects as keys
+
+   ```js
+   let john = { name: "John" };
+
+   // for every user, let's store their visits count
+   let visitsCountMap = new Map();
+
+   // john is the key for the map
+   visitsCountMap.set(john, 123);
+
+   console.log(visitsCountMap.get(john)); // 123
+   ```
+
+3. Iteration:
+
+   - `map.keys()` – returns an iterable for keys,
+   - `map.values()` – returns an iterable for values,
+   - `map.entries()` – returns an iterable for entries [key, value], it’s used by default in `for..of`.
+
+   ```js
+   let recipeMap = new Map([
+   	["cucumber", 500],
+   	["tomatoes", 350],
+   	["onion", 50],
+   ]);
+
+   // iterate over keys (vegetables)
+   for (let vegetable of recipeMap.keys()) {
+   	console.log(vegetable); // cucumber, tomatoes, onion
+   }
+
+   // iterate over values (amounts)
+   for (let amount of recipeMap.values()) {
+   	console.log(amount); // 500, 350, 50
+   }
+
+   // iterate over [key, value] entries
+   for (let entry of recipeMap) {
+   	// the same as of recipeMap.entries()
+   	console.log(entry); // cucumber,500 (and so on)
+   }
+   ```
+
+   Map also have inbuilt `forEach`
+
+   ```js
+   myMap.forEach((value, key, map) => {
+   	console.log(value, key, map); // cucumber: 500 etc, map is the map itself here.
+   });
+   ```
+
+4. Creating map from object
+
+   ```js
+   let obj = {
+   	name: "John",
+   	age: 30,
+   };
+
+   let map = new Map(Object.entries(obj));
+   ```
+
+5. Creating Object from map:
+
+   ```js
+   const myMap = new Map([
+   	["one", 1],
+   	["two", 2],
+   ]);
+   const myObj = Object.fromEntries(myMap);
+   ```
+
+   But as we know map can have object as keys, so if we create object from such a map, key will be `[object Object]`.
+
+### WeakMap
+
+1. We know if object is reachable it won't be garbage collected.
+
+   ```js
+   let a = { name: "john" };
+   const b = new Map();
+   b.set(a, "something");
+   a = null;
+   ```
+
+   still john object is in memory but weak map differs here. They don't stop garbage collection.
+
+2. In WeakMap keys must be objects, else it throws error.
+
+3. If object that is being used as key has no reference left, it will be removed from the memory.
+
+   ```js
+   let john = { name: "John" };
+
+   let weakMap = new WeakMap();
+   weakMap.set(john, "...");
+
+   john = null; // overwrite the reference
+
+   // john is removed from memory!
+   ```
+
+   So if john only exists as the key of WeakMap, it will be removed from memory, thus removing it from the WeakMap too.
+
+4. WeakMap don't use iteration and methods like `keys()`, `values()`, `entries()`. It has only following methods.
+
+   - weakMap.set(key, value)
+   - weakMap.get(key)
+   - weakMap.delete(key)
+   - weakMap.has(key)
+
+   Why though? Because as javascript engine don't do garbage collection immediately, it might wait to do it. So current count of elements inside WeakMap is not known.
+
+5. Use cases:
+   - If we are using some other data like a third party library, and we want to associate some data with it but only untill the third party library data is present, then we can use WeakMap. As if the third party library data is removed, its associated value will also be removed from the WeakMap.
+   - In Caching. Using Maps, lets say we have an object and we want to associate some data with it. But in the future that object is removed, but it wont be garbage collected and its association will still be present in the ccache. On the other hand if we use WeakMap for caching, once the object is garbage collected, its associated data will also get removed from cache.
+
+### Set
