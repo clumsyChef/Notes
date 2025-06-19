@@ -692,6 +692,8 @@ console.log(obj + 2); // "22" ("2" + 2), conversion to primitive returned a stri
    });
    ```
 
+   Above skips the "three" key value.
+
    ```js
    let str = '{"title":"Conference","date":"2017-11-30T12:00:00.000Z"}';
 
@@ -699,6 +701,9 @@ console.log(obj + 2); // "22" ("2" + 2), conversion to primitive returned a stri
 
    console.log(meetup.date.getDate()); // Error!
    ```
+
+   Gives error because date comes out as string.
+   To fix this we use reviver.
 
    ```js
    let str = '{"title":"Conference","date":"2017-11-30T12:00:00.000Z"}';
@@ -711,4 +716,115 @@ console.log(obj + 2); // "22" ("2" + 2), conversion to primitive returned a stri
    console.log(meetup.date.getDate()); // now works!
    ```
 
----
+### Rest paramenter `...`
+
+1. A function can have n number of arguments. To capture all of them with one variable we use `...` operator
+
+   ```js
+   function sumAll(...args) {
+   	// args is the name for the array
+   	let sum = 0;
+   	for (let arg of args) sum += arg;
+   	return sum;
+   }
+
+   console.log(sumAll(1)); // 1
+   console.log(sumAll(1, 2)); // 3
+   console.log(sumAll(1, 2, 3)); // 6
+   ```
+
+   We can also choose to get couple of starting parameters as variables and put others in res
+
+   ```js
+   function showName(firstName, lastName, ...titles) {
+   	console.log(firstName + " " + lastName); // Julius Caesar
+   	// the rest go into titles array
+   	// i.e. titles = ["Consul", "Imperator"]
+   	console.log(titles[0]); // Consul
+   	console.log(titles[1]); // Imperator
+   	console.log(titles.length); // 2
+   }
+
+   showName("Julius", "Caesar", "Consul", "Imperator");
+   ```
+
+   **> Rest parameter always must be at the end**
+
+2. In the old times there was no rest paramenter, so we just used `arguments` variable inside the function.
+
+   ```js
+   function showName() {
+   	console.log(arguments.length);
+   	console.log(arguments[0]);
+   	console.log(arguments[1]);
+
+   	// it's iterable
+   	// for(let arg of arguments) alert(arg);
+   }
+
+   // shows: 2, Julius, Caesar
+   showName("Julius", "Caesar");
+
+   // shows: 1, Ilya, undefined (no second argument)
+   showName("Ilya");
+   ```
+
+   `arguments` is array like and iterable, but we cant use array methods on it like `map`, `filter`, etc.
+
+### Spread syntax
+
+1. let say we have an array `[1, 2, 3]` and this can be of any length, and we want to use `Math.max` to find the number, then we can sprea the array by using spread syntax `...`
+
+   ```js
+   const arr = [5, 3, 1];
+   console.log(Math.max(arr)); // NaN
+   console.log(Math.max(...arr)); // 5
+   ```
+
+2. With spread syntax we can concatenate arrays too
+
+   ```js
+   const a = [1, 2, 3];
+   const b = [5, 6, 7];
+   const c = [0, ...a, 4, ...b]; // [1, 2, 3, 4, 5, 6, 7]
+   ```
+
+   We can do the same with objects.
+
+   ```js
+   const b = { one: 1, two: 2 };
+   const c = { four: 4, five: 5 };
+   const d = { zero: 0, ...b, three: 3, ...c };
+   // {zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5}
+   ```
+
+3. Spread syntax internally use iterators to gather elements, same as `for...of` does. So `for...of` for a string returns characters, thus spread operators returns array of characters.
+
+   ```js
+   const str = "Henlo";
+   console.log([...str]); // ['a', 's', 'd', 'f']
+   ```
+
+4. We can use spread operator to clone arrays and objects. But remember, in case of objects, it only clone upto first level i.e; nested objects are not cloned.
+
+   ```js
+   const a = {
+   	one: 1,
+   	two: 2,
+   	three: {
+   		four: 4,
+   		five: 5,
+   	},
+   	six: 6,
+   };
+
+   const b = { ...a };
+
+   b.one = 22;
+   b.three.four = 666;
+
+   console.log(JSON.stringify(a));
+   // {"one":1,"two":2,"three":{"four":666,"five":5},"six":6}
+   console.log(JSON.stringify(b));
+   // {"one":22,"two":2,"three":{"four":666,"five":5},"six":6}
+   ```
