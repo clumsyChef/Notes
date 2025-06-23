@@ -828,3 +828,201 @@ console.log(obj + 2); // "22" ("2" + 2), conversion to primitive returned a stri
    console.log(JSON.stringify(b));
    // {"one":22,"two":2,"three":{"four":666,"five":5},"six":6}
    ```
+
+### Function Objects
+
+1. Function object contains some usable properties.
+
+   ```js
+   function sayHi(user, age) {
+   	alert("Hi", user, age);
+   }
+
+   alert(sayHi.name); // sayHi
+   sayHi.length; // 2 return the length of arguments
+   // in length the rest paramenter are not counted
+   ```
+
+2. Functions can have custom properties
+
+   ```js
+   function sayHi(user, age) {
+   	sayHi.count++;
+   }
+
+   sayHi.count = 0;
+
+   sayHi();
+   sayHi();
+
+   console.log(sayHi.count); // 2
+   ```
+
+   In above we check how many times function is called.
+   Also function properties can replace closures sometimes.
+
+3. **Named Function Expression**: function expression that has a name.
+
+   ```js
+   let sayHi = function () {
+   	console.log("hey");
+   };
+   ```
+
+   Now lets add name to it.
+
+   ```js
+   let sayHi = function func() {
+   	console.log("hey");
+   };
+   ```
+
+   Two things can be done with this:
+
+   - It allows the function to reference itself internally.
+   - It is not visible outside of the function.
+
+   ```js
+   let sayHi = function func(who) {
+   	if (who) {
+   		alert(`Hello, ${who}`);
+   	} else {
+   		func("Guest"); // use func to re-call itself
+   	}
+   };
+
+   sayHi(); // Hello, Guest
+
+   // But this won't work:
+   func(); // Error, func is not defined (not visible outside of the function)
+   ```
+
+   But we can directly use `sayHi`, then why use this? Because maybe in the above scenatior some changes the `sayHi` variable to something else, but if we use NFE, it won't break the code.
+
+### Function binding
+
+1. We can in some scenatiors loose the context of the `this`.
+
+   ```js
+   const user = {
+   	name: "sarthak",
+   	sayHi() {
+   		console.log(`Hi, ${this.name}`); // Hi, undefined
+   		// output is for strict mode, for non strict its empty string.
+   	},
+   };
+
+   setTimeout(user.sayHi, 1000);
+   ```
+
+   Now there are 2 ways to solve it
+
+   - **We make a wrapper while calling the function:**
+
+   ```js
+   setTimeout(function () {
+   	user.sayHi();
+   }, 1000);
+   ```
+
+   Now this works because it receives `user` outer lexical environment. But what if someone changes the value of `sayHi` before it gets called?
+
+   ```js
+   setTimeout(function () {
+   	user.sayHi();
+   }, 1000);
+
+   user = {
+   	sayHi() {
+   		console.log("value changed");
+   	},
+   };
+   ```
+
+   - **Function binding:**
+
+   ```js
+   // Syntax
+   let bound = func.bind(context, [arg1], [arg2], ...);
+   ```
+
+   Usage:
+
+   ```js
+   let user = {
+   	firstName: "John",
+   	sayHi() {
+   		console.log(`Hello, ${this.firstName}!`);
+   	},
+   };
+
+   let sayHi = user.sayHi.bind(user); // (*)
+
+   // can run it without an object
+   sayHi(); // Hello, John!
+
+   setTimeout(sayHi, 1000); // Hello, John!
+
+   // even if the value of user changes within 1 second
+   // sayHi uses the pre-bound value which is reference to the old user object
+   user = {
+   	sayHi() {
+   		console.log("Another user in setTimeout!");
+   	},
+   };
+   ```
+
+2. Partial binding.
+
+   ```js
+   function mul(a, b) {
+   	return a * b;
+   }
+
+   let double = mul.bind(null, 2);
+
+   alert(double(3)); // = mul(2, 3) = 6
+   alert(double(4)); // = mul(2, 4) = 8
+   alert(double(5)); // = mul(2, 5) = 10
+   ```
+
+   This is called "partial function application" – we create a new function by fixing some parameters of the existing one.
+   Please note that we actually don’t use `this` here. But bind requires it, so we must put in something like `null`.
+   Applications:
+
+   - We can use these partial functions to create independent functions.
+   - When we have a generic function and we want to use less universal variant of it.
+   - Eg. we have a function `send(from, to, text)`. Then, inside a user object we may want to use a partial variant of it: `sendTo(to, text)` that sends from the current user.
+
+   **Partial without context**
+
+   ```js
+   function partial(func, ...argsBound) {
+   	console.log(argsBound); // ["10:00"]
+   	return function (...args) {
+   		console.log(args); // ["Hello"]
+   		return func.call(this, ...argsBound, ...args);
+   	};
+   }
+
+   // Usage:
+   let user = {
+   	firstName: "John",
+   	say(time, phrase) {
+   		console.log(`[${time}] ${this.firstName}: ${phrase}!`);
+   	},
+   };
+
+   // add a partial method with fixed time
+   user.sayNow = partial(user.say, new Date().getHours() + ":" + new Date().getMinutes());
+
+   user.sayNow("Hello");
+   // Something like:
+   // [10:00] John: Hello!
+   ```
+
+   The result of partial(func[, arg1, arg2...]) call is a wrapper that calls func with:
+
+   - Same this as it gets (for user.sayNow call it’s user)
+   - Then gives it ...argsBound – arguments from the partial call ("10:00")
+   - Then gives it ...args – arguments given to the wrapper ("Hello")
