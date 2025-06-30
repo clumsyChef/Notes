@@ -1026,3 +1026,630 @@ console.log(obj + 2); // "22" ("2" + 2), conversion to primitive returned a stri
    - Same this as it gets (for user.sayNow call it’s user)
    - Then gives it ...argsBound – arguments from the partial call ("10:00")
    - Then gives it ...args – arguments given to the wrapper ("Hello")
+
+### Old "var"
+
+1. "var" is like "let", in many situations you can replace them with one another and expects things to work.
+
+2. "var" has no block scope.
+
+   ```js
+   if (true) {
+   	var thing = true;
+   }
+   console.log(thing); // true, still exists in outer scope.
+   ```
+
+   ```js
+   for (var i = 0; i <= 10; i++) {
+   	var one = 1;
+   }
+   console.log(i); // 10
+   console.log(one); // 1
+   ```
+
+3. If code block is inside a function then "var" becomes function level.
+
+   ```js
+   function sayHi() {
+   	if (true) {
+   		var phrase = "Hello";
+   	}
+
+   	console.log(phrase); // works
+   }
+
+   sayHi();
+   console.log(phrase); // ReferenceError: phrase is not defined
+   ```
+
+4. tolerates redeclarations.
+
+   ```js
+   var one = 1;
+   var one = "one";
+   // Doesn't throws error
+   ```
+
+5. can be declared below their use.
+
+   ```js
+   function sayHi() {
+   	phrase = "Hello";
+   	console.log(phrase); // Hello
+   	var phrase;
+   }
+   sayHi();
+   ```
+
+   Above is because of "Hoisting".
+   But Declarations are hoisted, assignments are not.
+
+   ```js
+   function sayHi() {
+   	var phrase; // declaration works at the start...
+   	alert(phrase); // undefined
+   	phrase = "Hello"; // ...assignment - when the execution reaches it.
+   }
+   sayHi();
+   ```
+
+### IFFE
+
+1. These are immediately run functions. There are different ways to write and IFFE:
+
+   ![IFFE Syntax](./images/js-iffe-syntax.png)
+
+### Scheduling:
+
+1. **`setTimeout`**
+
+   - syntax: `let timerId = setTimeout(func|code, [delay], [arg1], [arg2], ...)`
+
+   ```js
+   function hello(greeting, name) {
+   	console.log(greeting, name);
+   }
+
+   setTimeout(hello, 1000, "Henlo", "Sarthak");
+   ```
+
+   - Every timemout returns a timeout identifier `timerId`. We can use this to cancel the timeout
+
+   ```js
+   let timerId = setTimeout(func, 1000);
+   clearTimeout(timerId);
+   ```
+
+2. **`setInterval`**
+
+   - Syntax: `let timerId = setInterval(func|code, [delay], [arg1], [arg2], ...)`
+   - interval also returns id which can be used to cancel it by using `clearInterval`.
+
+3. We can use nested `setTimeout` instead of `setInterval` also:
+
+   ```js
+   let timerId = setTimeout(function tick() {
+   	console.log("tick");
+   	timerId = setTimeout(tick, 1000);
+   }, 1000);
+   ```
+
+   This way is more flexible than using `setInterval` as other timeouts can be scheduled with different timers.
+   Eg. lets say we want to send a request to server every 2 sec, but if server request fails we want to increase the timer to 4, 6, 8 then so on.
+
+   ```js
+   let delay = 2000;
+   let timerId = setTimeout(function request() {
+   	// request code
+   	if (true) {
+   		// request fails
+   		delay += 2000;
+   	}
+   	timerId = setTimeout(request, delay);
+   }, delay);
+   ```
+
+   - nested `setTimeout` is more precise in some scenarios. Eg. Lets say we want to send a request with 100ms delay, but the delay must happen only after the request is completed.
+
+   First we use `setInterval`:
+
+   ```js
+   let timerId = setInterval(function () {
+   	// a function that sends request
+   }, 100);
+   ```
+
+   Now in the above scenario, lets assume that the requesting function takes a long time, longer than 100ms, so what will happen is that the function will run second time even before the first request is completed.
+
+   In comes nested `setTimeout` to the rescue.
+
+   ```js
+   let timerId = setTimeout(function request() {
+   	// function that takes more than 100ms
+   	timerId = setTimeout(request, 100);
+   }, 100);
+   ```
+
+4. Garbage collection: an internal reference is created to the passed function so its not garbage collected in both `setTimeout` and `setInterval`, even if there are no other references to it.
+
+   - for `setTimeout`, function stays in the memory until the scheduler calls it.
+   - for `setInterval`, function says in the memory until `clearInterval` is called.
+   - Also, the function references out lexical environment, so while it lives, outer variable lives too, thus more memory is used. So we don't need the scheduler, better clear it.
+
+5. Zero delay is infact not zero (in a browser). In browser, theres a limitation how many nested timers can run, after 5 nested timers, delay becomes atleast 4ms.
+
+   ```js
+   let start = Date.now();
+   let times = [];
+
+   setTimeout(function run() {
+   	times.push(Date.now() - start); // remember delay from the previous call
+
+   	if (start + 100 < Date.now()) console.log(times); // show the delays after 100ms
+   	else setTimeout(run); // else re-schedule
+   });
+   // [1, 1, 1, 1, 1, 1, 5, 10, 14, 18, 22, 27, 31, 35, 39, 44, 48, 52, 56, 61, 65, 69, 73, 78, 82, 86, 90, 95, 99, 103].
+   ```
+
+   You see few timers are run immediately, then a delay comes into play.
+   Although this limitation is for browsers (client-side javascript) only.
+
+### Property flags and descriptors
+
+1. Object properties, beside values have 3 special attributes (called flags)
+
+   - `writable` – if true, the value can be changed, otherwise it’s read-only.
+   - `enumerable` – if true, then listed in loops, otherwise not listed.
+   - `configurable` – if true, the property can be deleted and these attributes can be modified, otherwise not.
+
+   When we create properties in normal way, all three of them are true. But we can change them.
+
+2. Syntax:
+
+   - `Object.getOwnPropertyDescriptor(obj, "keyName")` - Get them for particular property whose key you passed
+   - `Object.getOwnPropertyDescriptors(obj)` - Gets them for all properties
+   - `Object.defineProperty(obj, "keyName", {value: "something", writable: true, enumerable: true, configurable: true})` - To define them
+   - `Object.defineProperties(obj, {prop1: descriptors1, prop2: descriptors2})` - to define multiple properties
+
+3. Lets say we make a property non writable and the tries to give it a value, it wont give error. To throw an error try to do that same in strict mode.
+
+4. Non configurable is set to false for some of the built-in objects like Math.PI cant be over written. We can't do `Math.PI = 4.1`. Also we cant make Math.PI to be writable again with `Object.defineProperty(Math, "PI", { writable: true });` because its not configurable.
+
+   - Making a property non configurable in a one-way road. We can't change them back with `defineProperty`
+   - non configurable makes changes of property flags and its deletion, while allowing to change its value.
+
+   ```js
+   let user = {
+   	name: "John",
+   };
+
+   Object.defineProperty(user, "name", {
+   	writable: false,
+   	configurable: false,
+   });
+
+   // won't be able to change user.name or its flags
+   // all this won't work:
+   user.name = "Pete";
+   delete user.name;
+   Object.defineProperty(user, "name", { value: "Pete" });
+   ```
+
+   We can change writable: true to false for a non-configurable property, thus preventing its value modification (to add another layer of protection). Not the other way around though.
+
+5. When we clone properties, through any normal way, either by defining empty object and looping over and setting or structured clone, it clones the properties and values but never the descriptors. So to copy over the flags too, we can clone object with `let clone = Object.defineProperties({}, Object.getOwnPropertyDescriptors(obj));`
+
+6. Some in built methods which uses these flags:
+
+   - `Object.preventExtensions(obj)`: Forbids the addition of new properties to the object.
+   - `Object.seal(obj)`: Forbids adding/removing of properties. Sets configurable: false for all existing properties.
+   - `Object.freeze(obj)`: Forbids adding/removing/changing of properties. Sets configurable: false, writable: false for all existing properties.
+
+   And also there are tests for them:
+
+   - `Object.isExtensible(obj)`: Returns false if adding properties is forbidden, otherwise true.
+   - `Object.isSealed(obj)`: Returns true if adding/removing properties is forbidden, and all existing properties have configurable: false.
+   - `Object.isFrozen(obj)`: Returns true if adding/removing/changing properties is forbidden, and all current properties are configurable: false, writable: false.
+
+### Property getters and setters.
+
+1. There are two kinds of object properties.
+
+- The first kind is data properties. We already know how to work with them. All properties that we’ve been using until now were data properties.
+
+- The second type of property is something new. It’s an accessor property. They are essentially functions that execute on getting and setting a value, but look like regular properties to an external code.
+
+2. **Getters and Setters**
+
+   ```js
+   let user = {
+   	name: "John",
+   	surname: "Smith",
+
+   	get fullName() {
+   		return `${this.name} ${this.surname}`;
+   	},
+
+   	set fullName(value) {
+   		[this.name, this.surname] = value.split(" ");
+   	},
+   };
+
+   // set fullName is executed with the given value.
+   user.fullName = "Alice Cooper";
+
+   alert(user.name); // Alice
+   alert(user.surname); // Cooper
+   ```
+
+3. **Descriptors for accessors**
+   For accessor properties, there is no value or writable, but instead there are get and set functions.
+
+   That is, an accessor descriptor may have:
+
+   - `get` – a function without arguments, that works when a property is read,
+   - `set` – a function with one argument, that is called when the property is set,
+   - `enumerable` – same as for data properties,
+   - `configurable` – same as for data properties.
+
+   ```js
+   let user = {
+   	name: "John",
+   	surname: "Smith",
+   };
+
+   Object.defineProperty(user, "fullName", {
+   	get() {
+   		return `${this.name} ${this.surname}`;
+   	},
+
+   	set(value) {
+   		[this.name, this.surname] = value.split(" ");
+   	},
+   });
+
+   alert(user.fullName); // John Smith
+
+   for (let key in user) alert(key); // name, surname
+   ```
+
+4. A property can either be an accessor or data property, not both. If we try to give both values to it then, it gives error.
+
+   ```js
+   // Error: Invalid property descriptor.
+   Object.defineProperty({}, "prop", {
+   	get() {
+   		return 1;
+   	},
+
+   	value: 2,
+   });
+   ```
+
+5. Getters/Setters can be used to get control over properties.
+
+   ```js
+   let user = {
+   	get name() {
+   		return this._name;
+   	},
+
+   	set name(value) {
+   		if (value.length < 4) {
+   			alert("Name is too short, need at least 4 characters");
+   			return;
+   		}
+   		this._name = value;
+   	},
+   };
+
+   user.name = "Pete";
+   alert(user.name); // Pete
+
+   user.name = ""; // Name is too short...
+   ```
+
+   Now obviously from outside the `_name` can be accessed with `user._name`. But there is a widely known convention that properties starting with an underscore "\_" are internal and should not be touched from outside the object.
+
+6. Eg. Lets say we have a object
+
+   ```js
+   class User {
+   	constructor(name, age) {
+   		this.name = name;
+   		this.age = age;
+   	}
+   }
+   ```
+
+   Now any instance of this object has will use age like `user.age`. But lets say in the future we decide that the age is not a good way to store we want it to be dynamic, so we now want to store the user birthday.
+
+   ```js
+   class User {
+   	constructor(name, birthday) {
+   		this.name = name;
+   		this.birthday = birthday;
+   	}
+   }
+   ```
+
+   In this now wherever we are using the `.age` will break. To fix this we will create a getter inside this.
+
+   ```js
+   class User {
+   	constructor(name, birthday) {
+   		this.name = name;
+   		this.birthday = birthday;
+   	}
+
+   	get age() {
+   		const todaysYear = new Date().getFullYear();
+   		return todaysYear - this.birthday.getFullYear();
+   	}
+   }
+   ```
+
+   Now in the above `.age` will still work.
+
+### Prototypal inheritance
+
+1. In javascript every object has a hidden property `[[Prototype]]` that is either `null` or references to another object. That object is called "a prototype". Every time javascript tries to read a property from an object and its missing, javascript takes it from its prototype. This is called "Prototypal Inheritance".
+
+2. We can set a prototype by using `__proto__`.
+
+   ```js
+   let animal = {
+   	eats: true,
+   };
+   let rabbit = {
+   	jumps: true,
+   };
+
+   rabbit.__proto__ = animal; // sets rabbit.[[Prototype]] = animal
+   console.log(rabbit.jumps); // true -> bcoz it exists
+   console.log(rabbit.eats); // true -> its inherited
+   ```
+
+3. Limitations:
+
+   - The references can't go in circle, else it throws error.
+   - the value of `__proto__` can either be object or null, other types are ignored.
+
+4. `__proto__` is a historical getter/setter for `[[Prototype]]`. This works in all environments including server-side. Modern javascript suggests that we should use `Object.getPrototypeOf/Object.setPrototypeOf` instead of this get/set one.
+
+   ```js
+   const livingBeing = {
+   	breathes: true,
+   };
+   const person = {
+   	walks: true,
+   };
+   Object.setPrototypeOf(person, livingBeing);
+   console.log(person.walks); // true (own property)
+   console.log(person.breather); // true (inherited property)
+   console.log(Object.getPrototypeOf(person)); // {breathes: true}
+   ```
+
+5. Writing don't use prototype, its only used for reading. We can overwrite the properties too, so same properties can exist in both objects. The one directly in the object that is being called will be used. Though accessor properties are exceptions, as assingments are handled by a setter function. So writing to such a property is actually the same as calling a function.
+
+   ```js
+   let user = {
+   	name: "John",
+   	surname: "Smith",
+
+   	set fullName(value) {
+   		[this.name, this.surname] = value.split(" ");
+   	},
+
+   	get fullName() {
+   		return `${this.name} ${this.surname}`;
+   	},
+   };
+
+   let admin = {
+   	__proto__: user,
+   	isAdmin: true,
+   };
+
+   console.log(admin.fullName); // John Smith
+
+   // setter triggers!
+   admin.fullName = "Alice Cooper";
+
+   console.log(admin.fullName); // Alice Cooper, state of admin modified
+   console.log(user.fullName); // John Smith, state of user protected
+   ```
+
+6. `this` is not affected by prototypes at all. No matter where the method is found: in an object or its prototype. In a method call, `this` is always the object before the dot.
+
+7. `for...in` loops over the inherited properties too
+
+   ```js
+   let animal = {
+   	eats: true,
+   };
+
+   let rabbit = {
+   	jumps: true,
+   	__proto__: animal,
+   };
+
+   // Object.keys only returns own keys
+   console.log(Object.keys(rabbit)); // jumps
+
+   // for..in loops over both own and inherited keys
+   for (let prop in rabbit) console.log(prop); // jumps, then eats
+   ```
+
+8. To check wether a property exists only in the one that is being called with and not in the prototype, we can use `Object.hasOwnProperty(...)` or in modern browsers `Object.hasOwn(...)`.
+
+   ```js
+   const base = { one: "1", two: "2" };
+   const child = { three: "3", __proto__: base };
+
+   Object.hasOwn(child, "three"); // true
+   Object.hasOwn(child, "two"); // false
+
+   "three" in child; // true
+   "two" in child; // true
+   ```
+
+### Native prototype
+
+1. Pretty much all built in things have some prototypes, called native prototype
+
+   ```js
+   const arr = [1, 2, 3];
+   console.log(arr.__proto__ === Array.prototype); // true
+   console.log(arr.__proto__.__proto__ === Object.prototype); // true
+   ```
+
+2. Other built-in objects also work the same way. Even functions – they are objects of a built-in Function constructor, and their methods (call/apply and others) are taken from `Function.prototype`. Functions have their own `toString` too.
+
+   ```js
+   function f() {}
+   console.log(f.__proto__ == Function.prototype); // true
+   console.log(f.__proto__.__proto__ == Object.prototype); // true, inherit from objects
+   ```
+
+3. **Primitives**
+
+   - String, Number and Boolean - they are not objects. But if we try to access their properties, temporary wrapper objects are created using built-in constructors String, Number and Boolean. They provide the methods and disappear. We can get them using `String.prototype`, `Number.prototype` and `Boolean.prototype`.
+
+4. **`null`** and **`undefined`** have no object wrappers. There are no methods, properties or prototypes.
+
+5. We can change the Native prototype:
+
+   ```js
+   String.prototype.show = function () {
+   	console.log(this);
+   };
+   "Hey".show(); // Hey
+   ```
+
+   But this is generally a bad practice, what if there is another library which makes the same show method? One will overwrite other.
+
+   There is only one scenario where modifying the native prototype makes sense. Thats polyfilling.
+
+   ```js
+   if (!String.prototype.repeat) {
+   	// if there's no such method
+   	// add it to the prototype
+   	String.prototype.repeat = function (n) {
+   		// repeat the string n times
+
+   		// actually, the code should be a little bit more complex than that
+   		// (the full algorithm is in the specification)
+   		// but even an imperfect polyfill is often considered good enough
+   		return new Array(n + 1).join(this);
+   	};
+   }
+
+   console.log("La".repeat(3)); // LaLaLa
+   ```
+
+6. Borrowing from prototypes also works, where we take method from one object and copy it into another. Lets say we make arra like object and want to use array method of `join(...)`
+
+   ```js
+   let obj = {
+   	0: "Hello",
+   	1: "world!",
+   	length: 2,
+   };
+
+   obj.join = Array.prototype.join;
+
+   console.log(obj.join(",")); // Hello,world!
+   ```
+
+   It works only because `join` just cares about the correct indices and length property.
+
+   Another possibility is to inherit by setting obj.**proto** to Array.prototype, so all Array methods are automatically available in obj.
+
+### Prototype methods
+
+1. the modern methods are
+
+   - `Object.getPrototypeOf(obj)`: returns the protoype of object.
+   - `Object.setPrototypeOf(obj, somePrototype)`: sets the prototype of `obj` to `somePrototype`.
+
+2. Now while creating object we can give the prototype with the `__proto__`. Instead in modern ways we can use `Object.create(...)`.
+
+   ```js
+   const animal = {
+   	breathes: true,
+   };
+
+   const rabbit = Object.create(animal);
+
+   rabbit.jumps = true;
+
+   console.log(rabbit.jumps); // true
+   console.log(rabbit.breathes); // true
+   ```
+
+   But `Object.create(...)` has another argument by which we can set properties descriptors.
+
+   ```js
+   let animal = {
+   	eats: true,
+   };
+
+   let rabbit = Object.create(animal, {
+   	jumps: {
+   		value: true,
+   	},
+   });
+
+   alert(rabbit.jumps); // true
+   ```
+
+3. For exact cloning, including all properties: enumerable, non-enumerable, data properties and getters/setters - everything with the right prototype.
+
+   ```js
+   let clone = Object.create(Object.getPrototypeOf(obj), Object.getOwnPropertyDescriptors(obj));
+   ```
+
+   The above is way better than cloning using the `for...in`.
+
+4. **Don't change the `[[Prototype]]` method**: We only set prototype once when object is created. Javascript engines are highly optimized for this, so changing them with `Object.setPrototypeOf` or `obj.__proto__ = ` is very slow and breaks the internal optimizations for object property access operations. So avoid it unless you know what you’re doing, or JavaScript speed totally doesn’t matter for you.
+
+5. As we know we can assign only `null` or `object` to prototype. What if we want to assign a string to it?
+
+   ```js
+   const obj = {};
+   obj.__proto__ = "some string"l
+   console.log(obj.__proto__) // {__define.....
+   ```
+
+   There is another way to create an object with `null` prototype.
+
+   ```js
+   const obj = Object.create(null);
+   ```
+
+   So the above don't work. The problem is `__proto__` is not a property of an object, rather its an accessor property of the `Object.prototype`, thats why the above don't work because getter/setter takes care of the assignments.
+
+   But theres a trick we can do to overcome that. We assign the prototype to `null` first, because everything other than `null` and `object` is ignored, and when null is assigned the inherited getter/setter are no more there. Now `__proto__` starts acting like a property of an object.
+
+   ```js
+   const obj = {};
+   obj.__proto__ = null;
+   obj.__proto__ = "some string";
+   console.log(obj.__proto__); // some string
+   ```
+
+   These objects are called "Very Plain" or "Pure Dictionary" objects, as they are even simpler than normal objects. A downside is that all the in-built methods are no more available to them eg. `toString(...)`.
+
+   ```js
+   const obj = Object.create(null);
+   String(obj); // TypeError: Cannot convert object to primitive value
+   ```
+
+   Note that most object-related methods are Object.something(...), like Object.keys(obj) – they are not in the prototype, so they will keep working on such objects:
+
+   ```js
+   const obj = Object.create(null);
+   console.log(Object.keys(obj)); // []
+   ```
