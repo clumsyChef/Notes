@@ -1653,3 +1653,203 @@ console.log(obj + 2); // "22" ("2" + 2), conversion to primitive returned a stri
    const obj = Object.create(null);
    console.log(Object.keys(obj)); // []
    ```
+
+### Class
+
+1. syntax:
+
+   ```js
+   class User {
+   	constructor(name) {
+   		this.name = name;
+   	}
+   	henlo() {
+   		return `Hi, ${this.name}`;
+   	}
+   }
+
+   const user1 = new User("Sarthak");
+   console.log(user1.henlo()); // Hi, Sarthak
+   ```
+
+   When `new User("Sarthak")` is called:
+
+   - New object is created.
+   - constructor runs with given arguments and assigns it to `this.name`.
+
+2. Classes are functions
+
+   ```js
+   console.log(typeof User); // function
+   ```
+
+   What `new User() {...}` does is:
+
+   - Creates a function named `User`, that becomes the result of the class declaration. The function code is taken from the constructor method (assumed empty if we don’t write such method).
+   - Stores class methods, in `User.prototype`.
+
+   We can make the same User class from functions too.
+
+   ```js
+   function User(name) {
+   	this.name = name;
+   }
+
+   User.prototype.henlo = function () {
+   	return `Henlo from function, ${this.name}`;
+   };
+
+   const user1 = new User("Sarthak");
+   console.log(user1.henlo()); // henlo from function, Sarthak
+   ```
+
+3. ```js
+   class User {
+   	constructor(name) {
+   		this.name = name;
+   	}
+   	sayHi() {
+   		console.log(this.name);
+   	}
+   }
+
+   // class is a function
+   console.log(typeof User); // function
+
+   // ...or, more precisely, the constructor method
+   console.log(User === User.prototype.constructor); // true
+
+   // The methods are in User.prototype, e.g:
+   console.log(User.prototype.sayHi); // the code of the sayHi method
+
+   // there are exactly two methods in the prototype
+   console.log(Object.getOwnPropertyNames(User.prototype)); // constructor, sayHi
+   ```
+
+4. class is not just a syntactic sugar over functions, there are some differences.
+
+   - First, a function created by class is labelled by a special internal property `[[IsClassConstructor]]: true`. So it’s not entirely the same as creating it manually. The language checks for that property in a variety of places. For example, unlike a regular function, it must be called with `new`:
+
+     ```js
+     class User {
+     	constructor() {}
+     }
+
+     console.log(typeof User); // function
+     User(); // Error: Class constructor User cannot be invoked without 'new'
+     ```
+
+     Also, a string representation of a class constructor in most JavaScript engines starts with the “class…”
+
+     ```js
+     class User {
+     	constructor() {}
+     }
+
+     console.log(User); // class User { ... }
+     ```
+
+   - Class methods are non-enumerable. A class definition sets enumerable flag to false for all methods in the "prototype".
+   - Classes always use strict. All code inside the class construct is automatically in strict mode.
+
+5. **Class Expressions:**
+
+   ```js
+   let User = class {
+   	sayHi() {
+   		console.log("Hello");
+   	}
+   };
+   ```
+
+   ```js
+   let User = class MyClass {
+   	sayHi() {
+   		console.log(MyClass); // MyClass name is visible only inside the class
+   	}
+   };
+
+   new User().sayHi(); // works, shows MyClass definition
+
+   console.log(MyClass); // error, MyClass name isn't visible outside of the class
+   ```
+
+6. **Getter/Setters:**
+
+   ```js
+   class User {
+   	constructor(name) {
+   		// invokes the setter
+   		this.name = name;
+   	}
+
+   	get name() {
+   		return this._name;
+   	}
+
+   	set name(value) {
+   		if (value.length < 4) {
+   			console.log("Name is too short.");
+   			return;
+   		}
+   		this._name = value;
+   	}
+   }
+
+   let user = new User("John");
+   console.log(user.name); // John
+
+   user = new User(""); // Name is too short.
+   ```
+
+7. **Computed Names:**
+
+   ```js
+   class User {
+   	["say" + "Hi"]() {
+   		alert("Hello");
+   	}
+   }
+
+   new User().sayHi();
+   ```
+
+8. Making bound functions:
+
+   ```js
+   class Button {
+   	constructor(value) {
+   		this.value = value;
+   	}
+
+   	click() {
+   		console.log(this.value);
+   	}
+   }
+
+   let button = new Button("hello");
+
+   setTimeout(button.click, 1000); // undefined
+   ```
+
+   There are 2 ways we can solve this,
+
+   - Pass a wrapper-function, such as `setTimeout(() => button.click(), 1000)`.
+   - Bind the method to object, e.g. in the constructor.
+
+   But class fields provide another method.
+
+   ```js
+   class Button {
+   	constructor(value) {
+   		this.value = value;
+   	}
+   	click = () => {
+   		console.log(this.value);
+   	};
+   }
+
+   let button = new Button("hello");
+
+   setTimeout(button.click, 1000); // hello
+   ```
