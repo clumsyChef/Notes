@@ -1853,3 +1853,193 @@ console.log(obj + 2); // "22" ("2" + 2), conversion to primitive returned a stri
 
    setTimeout(button.click, 1000); // hello
    ```
+
+### Class Inheritance
+
+1. inheritance works with `extends` keyword
+
+   ```js
+   class Animal {
+   	constructor(name) {
+   		this.name = name;
+   	}
+
+   	walks() {
+   		console.log(`${this.name} WALKS`);
+   	}
+   }
+
+   class Dog extends Animal {
+   	barks() {
+   		console.log(`${this.name} BARKS`);
+   	}
+   }
+   ```
+
+   Now couple of points:
+
+   - Dog will have both the methods walks and barks.
+   - If we write walks methods in Dog class also, it will override the one written in Animal
+   - Internally extends works like prototype methods. `Dog.prototype` will have bark method in it and `Dog.prototype.__proto__` will have methods of Animal.
+   - Lets say we dont want to override the method of parent, use it as it is and do something other than that too, we can use `super`
+
+     ```js
+     class Dog extends Animal {
+     	barks() {
+     		console.log(`${this.name} BARKS`);
+     	}
+
+     	walks() {
+     		super.walks(); // this will call the method of parent too
+     		console.log(`${this.name} more like run.`);
+     	}
+     }
+     ```
+
+2. In the above code dog don't have its own constructor, when that happens an empty constructor is implemented like below
+
+   ```js
+   class Dog extends Animal {
+   	constructor(...args) {
+   		super(...args);
+   	}
+   }
+   ```
+
+   We can also add constructor
+
+   ```js
+   class Dog extends Animal {
+   	constructor(name, ears) {
+   		super(name);
+   		this.ears = ears;
+   	}
+   }
+   ```
+
+   this wont work with `this.name = name` because constructors in inheriting classes must call `super(...)`, and (!) do it before using this.
+
+3. overriding class fields
+
+   ```js
+   class Animal {
+   	name = "animal";
+
+   	constructor() {
+   		console.log(this.name); // (*)
+   	}
+   }
+
+   class Rabbit extends Animal {
+   	name = "rabbit";
+   }
+
+   new Animal(); // animal
+   new Rabbit(); // animal
+   ```
+
+   ```js
+   class Animal {
+   	showName() {
+   		// instead of this.name = 'animal'
+   		console.log("animal");
+   	}
+
+   	constructor() {
+   		this.showName(); // instead of console.log(this.name);
+   	}
+   }
+
+   class Rabbit extends Animal {
+   	showName() {
+   		console.log("rabbit");
+   	}
+   }
+
+   new Animal(); // animal
+   new Rabbit(); // rabbit
+   ```
+
+   Above 2 scenarios work in different ways.
+
+   - `Rabbit` is derived class so no `constructor`, so parents `constructor` is used.
+   - `Rabbit` calls super thus executing parents constructor,
+   - At the time of the parent constructor execution, there are no `Rabbit` class fields yet, that’s why `Animal` fields are used.
+   - this thing works because of methods, if we used functions for `showName`, it will work similar to the fields. Eg.
+     ```js
+     showName = function () {
+     	console.log("rabbit");
+     };
+     ```
+     doing it like above will output animal in both scenarios.
+
+4. **super(...):**
+
+   - JavaScript adds one more special internal property for functions: `[[HomeObject]]`.
+   - When a function is specified as a class or object method, its `[[HomeObject]]` property becomes that object.
+
+   ```js
+   let animal = {
+   	name: "Animal",
+   	eat() {
+   		console.log(`${this.name} eats.`);
+   	},
+   };
+
+   let rabbit = {
+   	__proto__: animal,
+   	eat() {
+   		// ...bounce around rabbit-style and call parent (animal) method
+   		this.__proto__.eat.call(this); // (*)
+   	},
+   };
+
+   let longEar = {
+   	__proto__: rabbit,
+   	eat() {
+   		// ...do something with long ears and call parent (rabbit) method
+   		this.__proto__.eat.call(this); // (**)
+   	},
+   };
+
+   longEar.eat(); // Error: Maximum call stack size exceeded
+   ```
+
+   The above code wont work because:
+
+   - `longEar` calls the rabbit through prototype.
+   - in `rabbit`, `this` becomes `longEar` because of `call(...)` function.
+   - `rabbit` calls itself again and again, thus ending in a endless loop.
+
+   Solution?
+
+   ```js
+   let animal = {
+   	name: "Animal",
+   	eat() {
+   		// animal.eat.[[HomeObject]] == animal
+   		console.log(`${this.name} eats.`);
+   	},
+   };
+
+   let rabbit = {
+   	__proto__: animal,
+   	name: "Rabbit",
+   	eat() {
+   		// rabbit.eat.[[HomeObject]] == rabbit
+   		super.eat();
+   	},
+   };
+
+   let longEar = {
+   	__proto__: rabbit,
+   	name: "Long Ear",
+   	eat() {
+   		// longEar.eat.[[HomeObject]] == longEar
+   		super.eat();
+   	},
+   };
+
+   // works correctly
+   longEar.eat(); // Long Ear eats.
+   ```
