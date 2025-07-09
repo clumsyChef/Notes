@@ -2043,3 +2043,80 @@ console.log(obj + 2); // "22" ("2" + 2), conversion to primitive returned a stri
    // works correctly
    longEar.eat(); // Long Ear eats.
    ```
+
+### Static properties and methods
+
+1. to create static properties or methods we use `static` keyword before them
+
+   ```js
+   class Animal {
+   	static breathes = "haan";
+   	static count = 0;
+
+   	constructor(name, age) {
+   		this.name = name;
+   		this.age = age;
+   		Animal.count++;
+   	}
+
+   	about() {
+   		console.log(`kya ${this.name} saans leta hai: ${Animal.breathes}`);
+   	}
+
+   	static aMethod() {
+   		return "Static method called";
+   	}
+
+   	static sortByAge(animal1, animal2) {
+   		return animal1.age - animal2.age;
+   	}
+   }
+
+   const a = new Animal("one", 3);
+   const b = new Animal("two", 1);
+   const c = new Animal("three", 2);
+
+   const x = [a, b, c];
+
+   x.sort(Animal.sortByAge);
+
+   console.log(x[0].name); // two
+   ```
+
+   - Static stuff dont belong to object or instance of class, it actually belongs to the whole class.
+   - We cannot use them like `a.aMethod()`, it should be used like `Animal.aMethod()`.
+   - In above example `count` property can be used for getting the number of times class has been instantiated.
+   - They work perfecty fine with inheritance too, so one can extend from `Animal` and still these will work.
+
+     ```js
+     class Dog extends Animal {
+     	something() {
+     		console.log("Dog does something");
+     	}
+     }
+
+     const doggus = [new Dog("Ralph", 4), new Dog("Mike", 8)];
+
+     doggus.sort(Animal.sortByAge);
+     console.log(doggus[0].name); // Ralph
+     ```
+
+   - With the help of these we get another way to instantiate a new class.
+
+     ```js
+     class Article {
+     	constructor(title, date) {
+     		this.title = title;
+     		this.date = date;
+     	}
+
+     	static createTodays() {
+     		// remember, this = Article
+     		return new this("Today's digest", new Date());
+     	}
+     }
+
+     let article = Article.createTodays();
+
+     alert(article.title); // Today's digest
+     ```
