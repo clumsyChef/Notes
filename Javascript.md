@@ -2120,3 +2120,250 @@ console.log(obj + 2); // "22" ("2" + 2), conversion to primitive returned a stri
 
      alert(article.title); // Today's digest
      ```
+
+### Private and Protected properties and methods.
+
+1. Public properties can be access from anywhere, Protected can be access from class where its defined and from classes which extends this class, Private can only be accessed from the within the class.
+
+2. To define private ones we use "#" as prefix.
+
+   ```js
+   class CoffeeMachine {
+   	#waterLimit = 200;
+
+   	#fixWaterAmount(value) {
+   		if (value < 0) return 0;
+   		if (value > this.#waterLimit) return this.#waterLimit;
+   	}
+
+   	setWaterAmount(value) {
+   		this.#waterLimit = this.#fixWaterAmount(value);
+   	}
+   }
+
+   let coffeeMachine = new CoffeeMachine();
+
+   // can't access privates from outside of the class
+   coffeeMachine.#fixWaterAmount(123); // Error
+   coffeeMachine.#waterLimit = 1000; // Error
+   ```
+
+3. Private ones dont conflict with public ones
+
+   ```js
+   class CoffeeMachine {
+   	#waterAmount = 0;
+
+   	get waterAmount() {
+   		return this.#waterAmount;
+   	}
+
+   	set waterAmount(value) {
+   		if (value < 0) value = 0;
+   		this.#waterAmount = value;
+   	}
+   }
+
+   let machine = new CoffeeMachine();
+
+   machine.waterAmount = 100;
+   alert(machine.#waterAmount); // Error
+   ```
+
+4. To define protected one we use "\_" as prefix. Now caveat is, properties with underscore "\_" prefix can be accessed from anywhere, its just that its an unwritten rule that developers don't try to get any property with that prefix.
+
+   ```js
+   class CoffeeMachine {
+   	_waterAmount = 0;
+
+   	set waterAmount(value) {
+   		if (value < 0) {
+   			value = 0;
+   		}
+   		this._waterAmount = value;
+   	}
+
+   	get waterAmount() {
+   		return this._waterAmount;
+   	}
+
+   	constructor(power) {
+   		this._power = power;
+   	}
+   }
+
+   // create the coffee machine
+   let coffeeMachine = new CoffeeMachine(100);
+
+   // add water
+   coffeeMachine.waterAmount = -10; // _waterAmount will become 0, not -10
+   ```
+
+### Mixins
+
+1. Lets say some class extends from some another class, but there is another object whose functionality we want to use. Now because we can only extend from one class, this is limiting. In comes Mixins.
+
+   ```js
+   class Hi {
+   	sayHi() {
+   		console.log("Hi");
+   	}
+   }
+
+   class Bye extends Hi {
+   	sayBye() {
+   		console.log("Bye");
+   	}
+   }
+
+   const GeneralTalkMixin = {
+   	saySomething() {
+   		console.log("SOMETHING");
+   	},
+   };
+
+   Object.assign(Bye.prototype, GeneralTalkMixin.prototype);
+
+   const b = new Bye();
+   b.sayHi(); // Hi
+   b.sayBye(); // Bye
+   b.saySomething(); // SOMETHING
+   ```
+
+   In the above example, `Bye` extends `Hi` but also can use `GeneralTalkMixin` functions.
+
+### Extending built-in classes.
+
+1. We can extend built in classes like Arrays, Object, etc
+
+   ```js
+   class PowerArray extends Array {
+   	isEmpty() {
+   		return this.length === 0;
+   	}
+   }
+
+   let arr = new PowerArray(1, 2, 5, 10, 50);
+   console.log(arr.isEmpty()); // false
+
+   let filteredArr = arr.filter((item) => item >= 10);
+   console.log(filteredArr); // 10, 50
+   console.log(filteredArr.isEmpty()); // false
+   ```
+
+   - Built-in methods like `filter`, `map` and others – return new objects of exactly the inherited type `PowerArray`. Their internal implementation uses the object’s constructor property for that.
+   - In this example `arr.prototype === PowerArray`.
+   - When `arr.filter()` is called, it internally creates the new array of results using exactly `arr.constructor`, not basic Array. That’s actually very cool, because we can keep using PowerArray methods further on the result.
+
+   Although we can customize this behavior by adding special static getter `Symbol.species` to the class.
+
+   ```js
+   class PowerArray extends Array {
+   	isEmpty() {
+   		return this.length === 0;
+   	}
+
+   	// built-in methods will use this as the constructor
+   	static get [Symbol.species]() {
+   		return Array;
+   	}
+   }
+
+   let arr = new PowerArray(1, 2, 5, 10, 50);
+   console.log(arr.isEmpty()); // false
+
+   // filter creates new array using arr.constructor[Symbol.species] as constructor
+   let filteredArr = arr.filter((item) => item >= 10);
+
+   // filteredArr is not PowerArray, but Array
+   console.log(filteredArr.isEmpty()); // Error: filteredArr.isEmpty is not a function
+   ```
+
+   - Now `.filter` returns `Array`. So the extended functionality is not passed any further.
+
+2. Important point:
+   - Built-in objects have their own static methods, for instance `Object.keys`, `Array.isArray` etc.
+   - native classes extend each other. For instance, `Array` extends `Object`.
+   - when one class extends another, both static and non-static methods are inherited.
+   - But built-in classes are an exception. They don’t inherit statics from each other.
+   - For example, `Array` inherit from `Object`, so their instances have methods from `Object.prototype`. But `Array.[[Prototype]]` does not reference `Object`, so there’s no, for instance, `Array.keys()` static method.
+
+## `instanceof`
+
+1. Basic Syntax:
+
+   ```js
+   class Rabbit {}
+   let rabbit = new Rabbit();
+
+   // is it an object of Rabbit class?
+   console.log(rabbit instanceof Rabbit); // true
+   ```
+
+   or with constructor functions
+
+   ```js
+   function Rabbit() {}
+
+   console.log(new Rabbit() instanceof Rabbit); // true
+   ```
+
+   or with built in classes
+
+   ```js
+   let arr = [1, 2, 3];
+   console.log(arr instanceof Array); // true
+   console.log(arr instanceof Object); // true
+   ```
+
+2. `instanceof` checks the prototype chain, but we can also set custom logic using the static function `Symbol.hasInstance`
+
+   ```js
+   class Animal {
+   	static [Symbol.hasInstance](obj) {
+   		if (obj.canEat) return true;
+   	}
+   }
+
+   let obj = { canEat: true };
+
+   console.log(obj instanceof Animal); // true: Animal[Symbol.hasInstance](obj) is called
+   ```
+
+   Anything with canEat property is an animal
+
+3. Most classes don't have `Symbol.Instance`. In that case, lets say for `obj instanceof Class` it checks whether `Class.prototype` is equal to one of the prototypes in the `obj` prototype chain.
+
+4. There is also `objA.isPrototypeOf(objB)` that returns true if `objA` is somewhere in the prototype chain of the `objB`.
+
+5. Remember `Class` constructor don't participate in the check, only `Class.prototype` and object's prototype chain
+
+6. Weird thing: we can use objects `toString` as extended `typeOf` and an alternate `instanceof`
+
+   ```js
+   let s = Object.prototype.toString;
+
+   console.log(s.call(123)); // [object Number]
+   console.log(s.call(null)); // [object Null]
+   console.log(s.call(alert)); // [object Function]
+   console.log(s.call()); // [object Undefined]
+   console.log(s.call("asdf")); // [object String]
+   ```
+
+   - We can customize this too:
+
+     ```js
+     let user = {
+     	[Symbol.toStringTag]: "User",
+     };
+
+     console.log({}.toString.call(user)); // [object User]
+     ```
+
+     ```js
+     alert({}.toString.call(window)); // [object Window]
+     alert({}.toString.call(new XMLHttpRequest())); // [object XMLHttpRequest]
+     ```
+
+   - this is `typeOf` on steroids, this works for both primitive data types and also for built-in objects and can be customzied too.
+   - We can use `{}.toString.call` instead of `instanceof` for built-in objects when we want to get the type as a string rather than just to check.
