@@ -2367,3 +2367,153 @@ console.log(obj + 2); // "22" ("2" + 2), conversion to primitive returned a stri
 
    - this is `typeOf` on steroids, this works for both primitive data types and also for built-in objects and can be customzied too.
    - We can use `{}.toString.call` instead of `instanceof` for built-in objects when we want to get the type as a string rather than just to check.
+
+### Error Handling
+
+1. Syntax:
+
+   ```js
+   try {
+   	// code
+   } catch (err) {
+   	// err
+   } finally {
+   	// happens everytime
+   }
+   ```
+
+   - code runs in `try` block
+   - if `error` happens, `catch` block runs
+   - `finally` block runs everytime, no matter what happens
+
+2. remember error is only caught when there is error in code, not a syntax error, like:
+
+   ```js
+   try {
+      {{{
+   } catch(err) {
+      //
+   }
+   ```
+
+   in the above error will not go under the catch statement. as `try...catch` just cathces the run time errors.
+
+3. `try...catch` works synchronously.
+
+   ```js
+   try {
+   	setTimeout(function () {
+   		noSuchVariable; // script will die here
+   	}, 1000);
+   } catch (err) {
+   	console.log("won't work");
+   }
+   ```
+
+   But below will work:
+
+   ```js
+   setTimeout(function () {
+   	try {
+   		noSuchVariable; // try...catch handles the error!
+   	} catch {
+   		console.log("error is caught here!");
+   	}
+   }, 1000);
+   ```
+
+4. `error` object which is argument of `catch` have 3 things:
+
+   - **name**: name of the error like, `SyntaxError`, `TypeError`, etc
+   - **message**: message of the error
+   - **stack**: stack of error
+
+   ```js
+   try {
+   	lalala; // error, variable is not defined!
+   } catch (err) {
+   	console.log(err.name); // ReferenceError
+   	console.log(err.message); // lalala is not defined
+   	console.log(err.stack); // ReferenceError: lalala is not defined at (...call stack)
+
+   	// Can also show an error as a whole
+   	// The error is converted to string as "name: message"
+   	console.log(err); // ReferenceError: lalala is not defined
+   }
+   ```
+
+5. In a recent addition optional catch is also being added.
+
+   ```js
+   try {
+   } catch {
+   	// <- without err
+   }
+   ```
+
+   here `catch` will omit the error.
+
+6. There is built in constructors for the the standard errors like, `Error`, `SyntaxError`, `TypeError`, etc
+
+   ```js
+   const error = new Error("this is error");
+   const referenceError = new ReferenceError("this is another error");
+   ```
+
+7. Variables inside, `try`, `catch` and `finally` and local.
+
+8. The `finally` clause works for any exit from `try...catch`. That includes an explicit `return`.
+
+   ```js
+   function func() {
+   	try {
+   		return 1;
+   	} catch (err) {
+   		/* ... */
+   	} finally {
+   		console.log("finally");
+   	}
+   }
+
+   console.log(func());
+   // finally
+   // 1
+   ```
+
+   this outputs "finally" the outputs "1".
+
+9. `try...finally` also works without the catch block.
+
+   ```js
+   function func() {
+   	// start doing something that needs completion (like measurements)
+   	try {
+   		// ...
+   	} finally {
+   		// complete that thing even if all dies
+   	}
+   }
+   ```
+
+   In the code above, an error inside try always falls out, because there’s no catch. But finally works before the execution flow leaves the function.
+
+10. global catch, a global error catcher.
+
+```js
+window.onerror = function (message, url, line, col, error) {
+	console.log(`asdfasdf ----> ${message}\n At ${line}:${col} of ${url}`);
+};
+
+function readData() {
+	badFunc(); // Whoops, something went wrong!
+}
+readData();
+console.log("asdf HAHAHAH");
+```
+
+The role of global catch is not to stop the faliure of script but rather to send a message to the developer so that maybe dev can log these somewhere.
+
+- We register at the service and get a piece of JS (or a script URL) from them to insert on pages.
+- That JS script sets a custom window.onerror function.
+- When an error occurs, it sends a network request about it to the service.
+- We can log in to the service web interface and see errors.
