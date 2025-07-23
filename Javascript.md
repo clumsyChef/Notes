@@ -2517,3 +2517,69 @@ The role of global catch is not to stop the faliure of script but rather to send
 - That JS script sets a custom window.onerror function.
 - When an error occurs, it sends a network request about it to the service.
 - We can log in to the service web interface and see errors.
+
+### Custom errors, extending Error
+
+1. We can make custom error for our own purpose, below is a kind of psuedo code for default `Error` class
+
+   ```js
+   class Error {
+      constructor(message) {
+         this.message = message;
+         this.name = "Error"; // (different names for different built-in error classes)
+         this.stack = <call stack>; // non-standard, but most environments support it
+      }
+   }
+   ```
+
+2. To make a custom error we extend this error:
+
+   ```js
+   class CustomError extends Error {
+   	constructor(message) {
+   		super(message);
+   		this.name = this.constructor.name; // this will give it name of the class
+   	}
+   }
+   ```
+
+   Example, lets say we want to throw error when a json don't a a property we need
+
+   ```js
+   /*
+      const stringifiedJson = {
+         fName: "sarthak",
+         lName: "jha",
+         age: 30,
+      };
+   */
+
+   class MissingPropertyError extends Error {
+   	constructor(message) {
+   		super(message);
+   		this.name = this.constructor.name;
+   	}
+   }
+
+   const readUser = () => {
+   	try {
+   		const data = JSON.parse(stringifiedJson);
+
+   		if (!data.number) {
+   			throw new MissingPropertyError("Missing Property: number");
+   		}
+
+   		// console.log("DATA", data);
+   	} catch (err) {
+   		if (err instanceof MissingPropertyError) {
+   			console.log(err.name); // MissingPropertyError
+   			console.log(err.message); // Missing Property: number
+   			console.log(err.stack); // <stack of error>
+   		}
+   	}
+
+   	console.log("DONE");
+   };
+
+   readUser();
+   ```
