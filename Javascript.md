@@ -2583,3 +2583,51 @@ The role of global catch is not to stop the faliure of script but rather to send
 
    readUser();
    ```
+
+### Callbacks
+
+1. callbacks are the functions that are called after something has happened, reason can be that function depends on the output of the first function. Eg. we load a script dynamically, now we want to use the function written inside the script's data, but untill it get loaded we can't use it, so we use callbacks here.
+
+   ```js
+   const url1 = "one";
+   const url2 = "two";
+   const url3 = "three";
+
+   const loadScript = (url, callbackFn) => {
+   	const script = document.createElement("SCRIPT");
+   	script.src = url;
+
+   	script.onload = () => callbackFn(null, script);
+   	script.onerror = () => callbackFn(new Error("Unable to load script"));
+
+   	document.head.append(script);
+   };
+
+   loadScript(url1, fn1);
+
+   const fn1 = (err, data) => {
+   	if (err) {
+   		//
+   	} else {
+   		loadScript(url2, fn2);
+   	}
+   };
+
+   const fn2 = (err, data) => {
+   	if (err) {
+   		//
+   	} else {
+   		loadScript(url2, fn3);
+   	}
+   };
+
+   const fn3 = (err, data) => {
+   	if (err) {
+   		//
+   	} else {
+   		// loadScript(url2, fn2);
+   	}
+   };
+   ```
+
+   Like there is a unwritten rule that variables with preceding underscore "\_" should not be used, similarly there is one more rule, that in callbacks we generally consider that first parameter will be an error.
