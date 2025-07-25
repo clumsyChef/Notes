@@ -2689,6 +2689,7 @@ The role of global catch is not to stop the faliure of script but rather to send
    	});
    ```
 
+   - we can put `finally` anywhere inbetween the chaining, and it will run in the correct sequence, result or error just passes through them to next consumer function.
    - `finally` don't accept any parameter, if given it ignores them.
    - `finally` also don't have to return anything, but if it returns its return value is ignored.
    - `finally` is used for things like lets say stop the loader or something like that.
@@ -2720,3 +2721,76 @@ The role of global catch is not to stop the faliure of script but rather to send
 
    promise.then((script) => alert("Another handler..."));
    ```
+
+7. We can chain promises, and make use of multiple then, lets say result of one depends on other, then we will use chaining.
+
+   ```js
+   const promise = (n) => new Promise((res) => res(n * 2));
+
+   promise(2)
+   	.then((result) => {
+   		console.log("1", result);
+   		return result * 2;
+   	})
+   	.finally(() => {
+   		console.log("final");
+   	})
+   	.then((result2) => {
+   		console.log("2", result2);
+   		return result2 * 2;
+   	});
+
+   // 1 4
+   // final
+   // 2 8
+   ```
+
+8. A handler, used in `.then(handler)` may create and return a `promise`. In that case further handlers wait until it settles, and then get its result.
+
+   ```js
+   new Promise(function (resolve, reject) {
+   	setTimeout(() => resolve(1), 1000);
+   })
+   	.then(function (result) {
+   		alert(result); // 1
+
+   		return new Promise((resolve, reject) => {
+   			setTimeout(() => resolve(result * 2), 1000);
+   		});
+   	})
+   	.then(function (result) {
+   		alert(result); // 2
+
+   		return new Promise((resolve, reject) => {
+   			setTimeout(() => resolve(result * 2), 1000);
+   		});
+   	})
+   	.then(function (result) {
+   		alert(result); // 4
+   	});
+   ```
+
+9. Error handling in promises works with `catch` just like `try...catch`. Just append `.catch` in the end of the chain and error will be handled there.
+
+   ```js
+   fetch("https://no-such-server.blabla") // rejects
+   	.then((response) => response.json())
+   	.catch((err) => alert(err)); // TypeError: failed to fetch (the text may vary)
+   ```
+
+   - If we throw inside `.catch`, then the control goes to the next closest error handler. And if we handle the error and finish normally, then it continues to the next closest successful `.then` handler.
+
+     ```js
+     // the execution: catch -> then
+     new Promise((resolve, reject) => {
+     	throw new Error("Whoops!");
+     })
+     	.catch(function (error) {
+     		alert("The error is handled, continue normally");
+     	})
+     	.then(() => alert("Next successful handler runs"));
+     ```
+
+10. There is like an invisible `try...catch` inside promise, so if you throw error inside the promise it converts it into the rejected promise.
+
+11. If error inside promise in unhandled then it stops the script, just like a normal error does.
