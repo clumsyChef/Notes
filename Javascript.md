@@ -2631,3 +2631,92 @@ The role of global catch is not to stop the faliure of script but rather to send
    ```
 
    Like there is a unwritten rule that variables with preceding underscore "\_" should not be used, similarly there is one more rule, that in callbacks we generally consider that first parameter will be an error.
+
+### Promises
+
+1. `Promises` is a piece of code that returns answer or error after something. this can be used as a replacement for the callbacks.
+
+   Syntax:
+
+   ```js
+   let promise = new Promise(function (resolve, reject) {
+   	// executor (the producing code, "singer")
+   });
+   ```
+
+2. This either `resolve` or `reject` the value. Resolve is used when its successful and reject is used when there is an error.
+
+   ```js
+   const promise = new Promise((resolve, reject) => {
+   	resolve("Answer");
+   	// or
+   	reject(new Error("Something happened"));
+   });
+   ```
+
+3. promise object returned by `new Promise` constructor has below internal properties.
+
+   - `state` — initially "pending", then changes to either "fulfilled" when `resolve` is called or "rejected" when `reject` is called.
+   - `result` — initially "undefined", then changes to value when `resolve(value)` is called or error when `reject(error)` is called.
+
+4. the function which is passed inside the promise constructor is called executor function. Then there is a consuming function which receives the result or error. There are 3 consuming functions, `then/catch/finally`.
+
+   ```js
+   myPromiseObj
+   	.then((result) => {
+   		console.log(result);
+   	})
+   	.catch((error) => {
+   		console.log(error);
+   	})
+   	.finally(() => {
+   		console.log("runs everytime but after others");
+   	});
+   ```
+
+   Here `finally` runs after `then` or `catch`. but we can make it run before them too, by just putting it above both the functions.
+
+   ```js
+   myPromiseObj
+   	.finally(() => {
+   		console.log("runs everytime but before others");
+   	})
+   	.then((result) => {
+   		console.log(result);
+   	})
+   	.catch((error) => {
+   		console.log(error);
+   	});
+   ```
+
+   - `finally` don't accept any parameter, if given it ignores them.
+   - `finally` also don't have to return anything, but if it returns its return value is ignored.
+   - `finally` is used for things like lets say stop the loader or something like that.
+
+5. There is one more way of getting error inside `then` only
+
+   ```js
+   .then(
+      (result) => {
+         console.log("RESULT:", result);
+      },
+      (err) => {
+         console.log("ERROR HAI:", err);
+      }
+   );
+   ```
+
+   You see `then` takes 2 parameters, second one being the function which will be called with the error.
+
+6. Eg. we can use it to load script.
+
+   ```js
+   let promise = loadScript("https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.11/lodash.js");
+
+   promise.then(
+   	(script) => alert(`${script.src} is loaded!`),
+   	(error) => alert(`Error: ${error.message}`)
+   );
+
+   promise.then((script) => alert("Another handler..."));
+   ```
