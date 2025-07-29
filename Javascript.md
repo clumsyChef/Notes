@@ -2794,3 +2794,261 @@ The role of global catch is not to stop the faliure of script but rather to send
 10. There is like an invisible `try...catch` inside promise, so if you throw error inside the promise it converts it into the rejected promise.
 
 11. If error inside promise in unhandled then it stops the script, just like a normal error does.
+
+### Promise static methods
+
+There are 6 static methods of Promise class:
+
+- **`Promise.all(promises)`** – waits for all promises to resolve and returns an array of their results. If any of the given promises rejects, it becomes the error of `Promise.all`, and all other results are ignored.
+- **`Promise.allSettled(promises)`** – waits for all promises to settle and returns their results as an array of objects with:
+  status: "fulfilled" or "rejected"
+  value (if fulfilled) or reason (if rejected).
+- **`Promise.race(promises)`** – waits for the first promise to settle, and its result/error becomes the outcome.
+- **`Promise.any(promises)`** – waits for the first promise to fulfill, and its result becomes the outcome. If all of the given promises are rejected, AggregateError becomes the error of Promise.any.
+- **`Promise.resolve(value)`** – makes a resolved promise with the given value.
+- **`Promise.reject(error)`** – makes a rejected promise with the given error.
+
+### Promisification
+
+1. We can make a promise of any asynchronous function by wrapping it around by another function which does so. We don't need to do it as we can use callbacks but promise looks better and are more modern way.
+
+   ```js
+   function loadScript(src, callback) {
+   	let script = document.createElement("script");
+   	script.src = src;
+
+   	script.onload = () => callback(null, script);
+   	script.onerror = () => callback(new Error(`Script load error for ${src}`));
+
+   	document.head.append(script);
+   }
+
+   // usage:
+   // loadScript('path/script.js', (err, script) => {...})
+   ```
+
+   Lets make the promise of the above function:
+
+   ```js
+   let loadScriptPromise = function (src) {
+   	return new Promise((resolve, reject) => {
+   		loadScript(src, (err, script) => {
+   			if (err) reject(err);
+   			else resolve(script);
+   		});
+   	});
+   };
+
+   // usage:
+   // loadScriptPromise('path/script.js').then(...)
+   ```
+
+### Microtasks
+
+1.  ```js
+    let promise = Promise.resolve();
+
+    promise.then(() => console.log("promise done!"));
+
+    console.log("code finished"); // this console.log shows first
+    ```
+
+    Look at the above code, although the promise was settled immidiately still it runs after the "code finished" one, why?
+
+    Because to manage the asynchronous task they are put in a queue (First In First Out), this queue is "Microtask Queue". This queue waits for the script to finish i,e. it let run all the tasks and once the single thread is empty, has no work, this queue start executing. So the `then/catch/finally` are put in a queue and will get executed once the script has nothing else to do.
+
+    This queue can have multiple `then/catch/finally` and they will be executed in the same order they are put inside the queue.
+
+    If we want to execute some task after `then/catch/finally`, then we put it inside another `then`
+
+    ```js
+    Promise.resolve()
+    	.then(() => console.log("promise done!"))
+    	.then(() => console.log("code finished"));
+    ```
+
+### Async/await
+
+1. We can use `async/await` instead of promises. They look better, works the same.
+
+   ```js
+   async function f() {
+   	let promise = new Promise((resolve, reject) => {
+   		setTimeout(() => resolve("done!"), 1000);
+   	});
+
+   	let result = await promise; // wait until the promise resolves (*)
+
+   	console.log(result); // "done!"
+   }
+
+   f();
+   ```
+
+2. In modern browsers top level await works fine too.
+
+   ```js
+   let response = await fetch("/article/promise-chaining/user.json");
+   let user = await response.json();
+
+   console.log(user);
+   ```
+
+3. For error handling in async await though we can use `.catch` but it is preffered to use `try...catch`
+
+   ```js
+   async function f() {
+   	let response = await fetch("http://no-such-url");
+   }
+
+   // f() becomes a rejected promise
+   f().catch(alert); // TypeError: failed to fetch // (*)
+   ```
+
+   We can do this but instead should try to write the code inside `try...catch` like below:
+
+   ```js
+   async function f() {
+   	try {
+   		let response = await fetch("/no-user-here");
+   		let user = await response.json();
+   	} catch (err) {
+   		// catches errors both in fetch and response.json
+   		alert(err);
+   	}
+   }
+
+   f();
+   ```
+
+### Generators
+
+1. Regular function returns only one value or `undefined`, generator functions returns (yields) multiple value, and on demand.
+
+   ```js
+   function* generateSequence() {
+   	yield 1;
+   	yield 2;
+   	return 3;
+   }
+
+   let generator = generateSequence();
+
+   generator.next(); // {value: 1, done: false}
+   generator.next(); // {value: 2, done: false}
+   generator.next(); // {value: 3, done: true}
+   generator.next(); // {value: undefined, done: true}
+   ```
+
+   ```js
+   function* generateSequence() {
+   	yield 1;
+   	yield 2;
+   	yield 3;
+   }
+
+   let generator = generateSequence();
+
+   generator.next(); // {value: 1, done: false}
+   generator.next(); // {value: 2, done: false}
+   generator.next(); // {value: 3, done: false}
+   generator.next(); // {value: undefined, done: false}
+   ```
+
+   In the above 2 examples, you see if you don't return any value from function it is assumed to be that function returns `undefined` and thats how the above works.
+
+2. Generators and iterables, we can use `for...of` or spread operator. But remember that these iterables ignore the return value, wether `undefined` or something else.
+
+   ```js
+   function* generateSequence() {
+   	yield 1;
+   	yield 2;
+   	yield 3;
+   }
+
+   let generator = generateSequence();
+
+   for (let value of generator) {
+   	console.log(value); // 1, 2, 3
+   }
+
+   console.log([...generator]); // [1, 2, 3]
+   ```
+
+   With return values ignored
+
+   ```js
+   function* generateSequence() {
+   	yield 1;
+   	yield 2;
+   	return 3;
+   }
+
+   let generator = generateSequence();
+
+   for (let value of generator) {
+   	console.log(value); // 1, 2
+   }
+
+   console.log([...generator]); // [1, 2]
+   ```
+
+3. yield can also pass value to the inside
+
+   ```js
+   function* gen() {
+   	let result = yield "2 + 2 = ?"; // (*)
+
+   	console.log(result);
+   }
+
+   let generator = gen();
+
+   let question = generator.next().value; // <-- yield returns the value
+
+   generator.next(4); // --> pass the result into the generator
+   ```
+
+4. we can throw error with `.throw`
+
+   ```js
+   function* generate() {
+   	try {
+   		let result = yield "2 + 2 = ?"; // (1)
+
+   		console.log("The execution does not reach here, because the exception is thrown above");
+   	} catch (e) {
+   		console.log("inside catch", e);
+   	}
+   }
+
+   let generator = generate();
+
+   let question = generator.next().value;
+
+   try {
+   	generator.throw(new Error("The answer is not found in my database"));
+   } catch (e) {
+   	console.log("outside catch", e);
+   }
+   ```
+
+   Why 2 `try...catch`? Just to show where we can use the error handling. If the error is catched inside then okay, if not its thrown outside and will be caught there.
+
+5. `generator.return(value)` finishes the generator execution and return the given `value`
+
+   ```js
+   function* gen() {
+   	yield 1;
+   	yield 2;
+   	yield 3;
+   }
+
+   const g = gen();
+
+   g.next(); // { value: 1, done: false }
+   g.return("foo"); // { value: "foo", done: true }
+   g.next(); // { value: undefined, done: true }
+   ```
+
+   So now all other `yield` are ignored.
