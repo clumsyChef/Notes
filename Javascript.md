@@ -3052,3 +3052,245 @@ There are 6 static methods of Promise class:
    ```
 
    So now all other `yield` are ignored.
+
+### Modules
+
+1. A module is a file. To make `import/export` work, browsers need `<script type="module">`. Modules have several differences:
+
+   - Deferred by default.
+   - Async works on inline scripts.
+   - To load external scripts from another origin (domain/protocol/port), CORS headers are needed.
+   - Duplicate external scripts are ignored.
+   - Modules have their own, local top-level scope and interchange functionality via import/export.
+   - Modules always use strict.
+   - Module code is executed only once. Exports are created once and shared between importers.
+
+2. When we use modules, each module implements the functionality and exports it. Then we use import to directly import it where it’s needed. The browser loads and evaluates the scripts automatically.
+
+3. In production, people often use bundlers such as Webpack to bundle modules together for performance and other reasons.
+
+4. Types of export:
+
+   - Before declaration of a class/function/…:
+     - `export [default] class/function/variable ...`
+   - Standalone export:
+     - `export {x [as y], ...}`
+   - Re-export:
+     - `export {x [as y], ...} from "module"`
+     - `export \* from "module" (doesn’t re-export default)`
+     - `export {default [as y]} from "module"` (re-export default).
+
+5. Types of import:
+
+   - Importing named exports:
+     - `import {x [as y], ...} from "module"`
+   - Importing the default export:
+     - `import x from "module"`
+     - `import {default as x} from "module"`
+   - Import all:
+     - `import * as obj from "module"`
+   - Import the module (its code runs), but do not assign any of its exports to variables:
+     - `import "module"`
+
+6. We can put `import/export` statements at the top or at the bottom of a script, that doesn’t matter.
+
+   ```js
+   sayHi();
+
+   import { sayHi } from "./say.js"; // import at the end of the file
+   ```
+
+   Above will work fine.
+
+   But we can't `import/export` between `{...}`
+
+   ```js
+   if (something) {
+   	import { sayHi } from "./say.js"; // Error: import must be at top level
+   }
+   ```
+
+   This won't work.
+
+7. Dynamic imports
+
+   ```js
+   async function load() {
+   	let say = await import("./say.js");
+   	say.hi(); // Hello!
+   	say.bye(); // Bye!
+   	say.default(); // Module loaded (export default)!
+   }
+   ```
+
+   or
+
+   ```js
+   let { hi, bye } = await import("./say.js");
+   ```
+
+### Proxy
+
+We can wrap objects of functions in proxy and intercept their operations with them. So instead of dealing with object or function directly, we deal with the proxy.
+
+We might do this for making sure that our main object cannot be changed much and can be used in a certain way, eg. we cannot change the values of certain keys, or it don't return the values for some of them.
+
+**`const proxy = new Proxy(target, handler)`**
+
+Handler is the object where we define our `trap` which intercepts the calls or usage
+
+**Object Proxy:**
+
+As we know a general unwritten rule is to never use the properties prefixed with and underscore (\_), lets say we wan't to make sure that this user can't access or get the property in any way unless they have particularly defined a way to get them. For our eg we will use `_password` property.
+
+```js
+let user = {
+	name: "John",
+	_password: "my-secret",
+	checkPassword: function () {
+		return this._password;
+	},
+};
+
+user = new Proxy(user, {
+	get(target, prop) {
+		if (prop.startsWith("_")) {
+			throw new Error("Access denied");
+		}
+		let value = target[prop];
+		return typeof value === "function" ? value.bind(target) : value;
+	},
+	set(target, prop, val) {
+		// to intercept property writing
+		if (prop.startsWith("_")) {
+			throw new Error("Access denied");
+		} else {
+			target[prop] = val;
+			return true;
+		}
+	},
+	deleteProperty(target, prop) {
+		// to intercept property deletion
+		if (prop.startsWith("_")) {
+			throw new Error("Access denied");
+		} else {
+			delete target[prop];
+			return true;
+		}
+	},
+	ownKeys(target) {
+		// to intercept property list
+		return Object.keys(target).filter((key) => !key.startsWith("_"));
+	},
+});
+
+// "get" doesn't allow to read _password
+try {
+	console.log(user._password); // Error: Access denied
+} catch (e) {
+	console.log(e.message);
+}
+
+// "set" doesn't allow to write _password
+try {
+	user._password = "test"; // Error: Access denied
+} catch (e) {
+	console.log(e.message);
+}
+
+// "deleteProperty" doesn't allow to delete _password
+try {
+	delete user._password; // Error: Access denied
+} catch (e) {
+	console.log(e.message);
+}
+
+// "ownKeys" filters out _password
+for (let key in user) console.log(key); // name
+Object.keys(user); // name
+Object.values(user); // John
+
+console.log(user.checkPassword); // my-secret
+```
+
+1. `get(target, prop)`: intercepts when we try to get the property
+
+   - We used `bind` for type `functions` because as said, what if someone defines a function to get password (like `checkPassword`), then it won't work either, so we did `value.bind(target)` and first agument of `bind` will be considered when using `this` so we directly passed the `target` to it.
+
+2. `set(target, prop, val)`: when we try to set the property
+3. `deleteProperty(target, prop)`: when we try to delete the property
+4. `ownKeys(target)`: when try to get all properties, because of what we wrote now `Object.keys`, `Object.values`, `Object.entries`, etc all will exclude the underscore property.
+
+```js
+let range = {
+	start: 1,
+	end: 10,
+};
+
+range = new Proxy(range, {
+	has(target, prop) {
+		return prop >= target.start && prop <= target.end;
+	},
+});
+
+alert(5 in range); // true
+alert(50 in range); // false
+```
+
+Above is the usage of `has` trap.
+
+**Function Proxy:**
+
+Lets say we have a wrapper function which runs passed function after a delay.
+
+```js
+function delay(fn, ms) {
+	return function () {
+		setTimeout(() => fn.apply(this, arguments), ms);
+	};
+}
+
+function sayHi(user) {
+	console.log("HI MAN", user);
+}
+
+console.log(sayHi.length); // 1
+
+sayHi("sarthak");
+
+const x = delay(sayHi, 1000);
+
+console.log(x.length); // 0
+
+x("bunty");
+```
+
+Although the code above works as intended, but you see the argument lengths are not correct. Here `x.length` takes the arguments length of returned function from `delay`. To overcome this we will use the function proxy.
+
+```js
+function delay(fn, ms) {
+	return new Proxy(fn, {
+		apply(target, thisArg, args) {
+			setTimeout(() => target.apply(thisArg, args), ms);
+		},
+	});
+}
+
+function sayHi(user) {
+	console.log("Haan ji", user);
+}
+
+console.log(sayHi.length); // 1
+
+sayHi("Sarthak");
+
+const x = delay(sayHi, 1000);
+
+console.log(x.length); // 1
+
+x("bunty");
+```
+
+The result is the same, but now not only calls, but all operations on the proxy are forwarded to the original function. We’ve got a “richer” wrapper.
+
+### Reflect
