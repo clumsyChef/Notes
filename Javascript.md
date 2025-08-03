@@ -3233,8 +3233,8 @@ range = new Proxy(range, {
 	},
 });
 
-alert(5 in range); // true
-alert(50 in range); // false
+console.log(5 in range); // true
+console.log(50 in range); // false
 ```
 
 Above is the usage of `has` trap.
@@ -3293,4 +3293,192 @@ x("bunty");
 
 The result is the same, but now not only calls, but all operations on the proxy are forwarded to the original function. We’ve got a “richer” wrapper.
 
+Some points:
+
+1. `proxy` is not `target`. These are 2 differnet objects
+
+   ```js
+   let allUsers = new Set();
+
+   class User {
+   	constructor(name) {
+   		this.name = name;
+   		allUsers.add(this);
+   	}
+   }
+
+   let user = new User("John");
+
+   console.log(allUsers.has(user)); // true
+
+   user = new Proxy(user, {});
+
+   console.log(allUsers.has(user)); // false
+   ```
+
+2. **Limitations:**
+
+   - Many built-in objects, for example `Map`, `Set`, `Date`, `Promise` and others make use of so-called “internal slots”. These are like properties, but reserved for internal, specification-only purposes. For instance, Map stores items in the internal slot `[[MapData]]`. Built-in methods access them directly, not via `[[Get]]/[[Set]] `internal methods. So `Proxy` can’t intercept that.
+
+   ```js
+   let map = new Map();
+
+   let proxy = new Proxy(map, {});
+
+   proxy.set("test", 1); // Error
+   ```
+
+   To work around this
+
+   ```js
+   let map = new Map();
+
+   let proxy = new Proxy(map, {
+   	get(target, prop, receiver) {
+   		let value = Reflect.get(...arguments);
+   		return typeof value == "function" ? value.bind(target) : value;
+   	},
+   });
+
+   proxy.set("test", 1);
+   console.log(proxy.get("test")); // 1 (works!)
+   ```
+
+   - same happens with private properties
+
+     ```js
+     class User {
+     	#name = "Guest";
+
+     	getName() {
+     		return this.#name;
+     	}
+     }
+
+     let user = new User();
+
+     user = new Proxy(user, {});
+
+     console.log(user.getName()); // Error
+     ```
+
+     To overcome this
+
+     ```js
+     class User {
+     	#name = "Guest";
+
+     	getName() {
+     		return this.#name;
+     	}
+     }
+
+     let user = new User();
+
+     user = new Proxy(user, {
+     	get(target, prop, receiver) {
+     		let value = Reflect.get(...arguments);
+     		return typeof value == "function" ? value.bind(target) : value;
+     	},
+     });
+
+     console.log(user.getName()); // Guest
+     ```
+
+3. Revokable properties
+
+   ```js
+   let object = {
+   	data: "Valuable data",
+   };
+
+   let { proxy, revoke } = Proxy.revocable(object, {});
+
+   // pass the proxy somewhere instead of object...
+   console.log(proxy.data); // Valuable data
+
+   // later in our code
+   revoke();
+
+   // the proxy isn't working any more (revoked)
+   console.log(proxy.data); // Error
+   ```
+
+   We can set them in a `WeakMap` with `.add(proxy, revoke)`, and when we revoke the proxy it will remove it from `WeakMap` too as it becomes unreachable for it.
+
 ### Reflect
+
+1. `Reflect` is a built-in object that simplifies creation of `Proxy`. `Reflect` allows properties to get called as functions. `Relfect.contructor`, `Reflect.deleteProperty`, etc.
+
+   ```js
+   let user = {
+   	name: "John",
+   };
+
+   user = new Proxy(user, {
+   	get(target, prop, receiver) {
+   		console.log(`GET ${prop}`);
+   		return Reflect.get(target, prop, receiver); // (1)
+   	},
+   	set(target, prop, val, receiver) {
+   		console.log(`SET ${prop}=${val}`);
+   		return Reflect.set(target, prop, val, receiver); // (2)
+   	},
+   });
+
+   let name = user.name; // shows "GET name"
+   user.name = "Pete"; // shows "SET name=Pete"
+   ```
+
+   - `Reflect.get` reads an object property.
+   - `Reflect.set` writes an object property and returns true if successful, false otherwise.
+
+2. Proxying a getter:
+
+   ```js
+   let user = {
+   	_name: "Guest",
+   	get name() {
+   		return this._name;
+   	},
+   };
+
+   let userProxy = new Proxy(user, {
+   	get(target, prop, receiver) {
+   		return target[prop]; // target = user
+   	},
+   });
+
+   let admin = {
+   	__proto__: userProxy,
+   	_name: "Admin",
+   };
+
+   // Expected: Admin
+   console.log(admin.name);
+   ```
+
+   This happens because in `target[prop]`, target is the object we proxied, due to which the value of `this` is that object. To way around it we use `Reflect` and `receiver` parameter.
+
+   ```js
+   let user = {
+   	_name: "Guest",
+   	get name() {
+   		return this._name;
+   	},
+   };
+
+   let userProxy = new Proxy(user, {
+   	get(target, prop, receiver) {
+   		// receiver = admin
+   		return Reflect.get(target, prop, receiver); // (*)
+   	},
+   });
+
+   let admin = {
+   	__proto__: userProxy,
+   	_name: "Admin",
+   };
+
+   console.log(admin.name); // Admin
+   ```
