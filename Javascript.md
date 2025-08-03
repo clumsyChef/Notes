@@ -3482,3 +3482,218 @@ Some points:
 
    console.log(admin.name); // Admin
    ```
+
+### Eval:
+
+1. We use eval to run a string of code
+
+   ```js
+   const code = "console.log('hey')";
+   eval(code); // hey
+   ```
+
+2. Although we can use this but we should ignore this as its a problematic thing.
+
+   - security risk: someone can execute any peice of code from it
+   - low performance: as engines look at it and don't touch it to optimize as they see this and assume it can have anything.
+   - minifiers don't minify the code written inside eval
+   - hard to debug.
+
+### Currying
+
+1. Currying is a transformation of functions that translates a function from callable as `f(a, b, c)` into callable as `f(a)(b)(c)`.
+
+   ```js
+   function curry(f) {
+   	// curry(f) does the currying transform
+   	return function (a) {
+   		return function (b) {
+   			return f(a, b);
+   		};
+   	};
+   }
+
+   // usage
+   function sum(a, b) {
+   	return a + b;
+   }
+
+   let curriedSum = curry(sum);
+
+   console.log(curriedSum(1)(2)); // 3
+   ```
+
+2. Advance implementation
+
+   ```js
+   function curry(func) {
+   	return function curried(...args) {
+   		if (args.length >= func.length) {
+   			return func.apply(this, args);
+   		} else {
+   			return function (...args2) {
+   				return curried.apply(this, args.concat(args2));
+   			};
+   		}
+   	};
+   }
+
+   function sum(a, b, c) {
+   	return a + b + c;
+   }
+
+   let curriedSum = curry(sum);
+
+   console.log(curriedSum(1, 2, 3)); // 6, still callable normally
+   console.log(curriedSum(1)(2, 3)); // 6, currying of 1st arg
+   console.log(curriedSum(1)(2)(3)); // 6, full currying
+   ```
+
+   the above 2 console examples get transformed to the third one.
+
+**Real world example**
+
+There is curry inside the `lodash` library, we will use it for this.
+
+The example we are going to take is of `log` function which is used to log date, importance and message
+
+```js
+function mainLog(date, importance, message) {
+	alert(`[${date.getHours()}:${date.getMinutes()}] [${importance}] ${message}`);
+}
+```
+
+Now we curry the above:
+
+```js
+const log = _.curry(mainLog);
+
+// this works
+log(new Date(), "DEBUG", "some debug"); // log(a, b, c)
+
+// but this also works
+log(new Date())("DEBUG")("some debug"); // log(a)(b)(c)
+```
+
+Now we will make functions for this.
+
+```js
+// logNow will be the partial of log with fixed first argument
+let logNow = log(new Date());
+
+// use it
+logNow("INFO", "message"); // [HH:mm] INFO message
+```
+
+OR
+
+```js
+let debugNow = logNow("DEBUG");
+
+debugNow("message"); // [HH:mm] DEBUG message
+```
+
+So:
+
+- We didn’t lose anything after currying: log is still callable normally.
+- We can easily generate partial functions such as for today’s logs.
+
+### Reference Type
+
+```js
+const user = {
+	name: "Sarthak",
+	sayHi: function () {
+		console.log(this.name);
+	},
+};
+
+user.sayHi(); // Sarthak (Works)
+
+const whatToSay = user.sayHi;
+whatToSay(); // don't work, and will throw error under strict mode.
+```
+
+Why is above happening? The issue we can assume is that the value of this is not correct in `whatToSay` scenario.
+
+In the above `user.sayHi` there are 2 operations:
+
+1. First, the dot '.' retrieves the property obj.method.
+2. Then parentheses () execute it.
+
+Now how this works is `user.sayHi` don't returns a function but value of a special **Reference Type**.
+
+The Reference Type is a “specification type”. We can’t explicitly use it, but it is used internally by the language.
+
+The value of Reference Type is a three-value combination (base, name, strict), where:
+
+- `base` is the object.
+- `name` is the property name.
+- `strict` is `true` if use strict is in effect.
+
+so, `user.sayHi` returns a value of Reference
+
+```js
+// Reference type value
+user, "sayHi", true;
+```
+
+- When parentheses "()" are called they receive the full information about the object and sets the right `this`
+- Reference type is a special “intermediary” internal type, with the purpose to pass information from dot . to calling parentheses ().
+- Any other operation like assignment `whatToSay = user.sayHi` discards the reference type as a whole, takes the value of `user.sayHi` (a function) and passes it on. So any further operation “loses” `this`.
+- So, as the result, the value of this is only passed the right way if the function is called directly using a dot `obj.method()` or square brackets `obj['method']()` syntax (they do the same here). There are various ways to solve this problem such as `func.bind()`.
+
+### BigInt
+
+1. `BigInt` is a special numeric type that provides support for integers of arbitrary length.
+
+   ```js
+   const bigint = 1234567890123456789012345678901234567890n;
+
+   const sameBigint = BigInt("1234567890123456789012345678901234567890");
+
+   const bigintFromNumber = BigInt(10); // same as 10n
+   ```
+
+2. Math operators
+
+   ```js
+   console.log(1n + 2n); // 3n
+
+   console.log(5n / 2n); // 2n
+
+   // But can't mix BigInt and regular numbers
+   console.log(5n + 1); // Error
+
+   // To do so be explicitly convert the number to BigInt
+   console.log(5n + BigInt(1)); // 6n
+   ```
+
+3. Unary plus is not supported.
+
+4. comparison works.
+
+   ```js
+   console.log(2n > 1n); // true
+   console.log(2n > 1); // true
+   ```
+
+5. Number and BigInts are of different types so `==` works but `===` don't.
+
+   ```js
+   console.log(1 == 1n); // true
+   console.log(1 === 1n); // false
+   ```
+
+6. Boolean operators
+
+   ```js
+   if (0n) {
+   	// never executes as 0n is falsy
+   }
+
+   // || and &&
+
+   console.log(1n || 2); // 1 (1n is considered truthy)
+   console.log(0n || 2); // 2 (0n is considered falsy)
+   ```
