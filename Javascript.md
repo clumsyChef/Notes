@@ -3697,3 +3697,105 @@ user, "sayHi", true;
    console.log(1n || 2); // 1 (1n is considered truthy)
    console.log(0n || 2); // 2 (0n is considered falsy)
    ```
+
+### WeakRef and FinalizationRegistry
+
+Just like `WeakMap` and `WeakSet` there is `WeakRef` which keeps a weak reference of the object. This just means that if there is no strong reference to the object left in the code and only weak references then the object will be garbage collected.
+
+```js
+let a = { name: "sarthak" };
+let b = a;
+
+a = null;
+
+console.log(b.name); // sarthak
+```
+
+This is because its a strong reference.
+
+```js
+let a = { name: "sarthak" };
+let b = new WeakRef(a);
+
+a = null;
+
+let ref = b.deref();
+
+if (ref) {
+	// we still have refence, i.e not garbage collected.
+} else {
+	// ref = undefined as object is garbage collected.
+}
+```
+
+Eg, of this will be lets say caching of data of images with respect to their link maybe,
+
+```js
+const getImg = (img) => {
+	// some expensive fn
+};
+
+const makeWeakCached = (fn) => {
+	const cache = new Map();
+	return (key) => {
+		const ref = cache.get(key);
+		if (ref) {
+			const cached = ref.deref();
+			if (cached !== undefined) return cached;
+		}
+
+		const fresh = fn(key);
+		cache.set(key, new WeakRef(fresh));
+		return fresh;
+	};
+};
+
+const getImgCached = makeWeakCached(getImg);
+```
+
+The problem with above code is what if all the strong reference to the cached data is removed, then our key will point to undefined which is just a memory leak. To help with this we need something such that we can know when the object is garbage collected.
+
+In comes **`FinalizationRegistry`**.
+
+```js
+let user = { name: "sarthak" };
+const registry = new FinalizationRegistry((heldValue) => {
+	console.log(`${heldValue} was garbage collected`);
+});
+registry.register(user, user.name);
+```
+
+When user object get garbage collected it prints `sarthak was garbage collected`. As the first argument is the object which will be looked at for the garbage collection and second is the value which will be sent to the callback function.
+
+So the above code of `FinalizationRegistry` mixed with `WeakRef` can help us.
+
+```js
+const getImg = (img) => {
+	// some expensive fn
+};
+
+const makeWeakCached = (fn) => {
+	const cache = new Map();
+	const cleanUp = new FinalizationRegistry((key) => {
+		const ref = cache.get(key);
+		if (ref && !ref.deref()) {
+			cache.delete(key);
+		}
+	});
+
+	return (key) => {
+		const ref = cache.get(key);
+		if (ref) {
+			const cached = ref.deref();
+			if (cached !== undefined) return cached;
+		}
+
+		const fresh = fn(key);
+		cache.set(key, new WeakRef(fresh));
+		cleanUp.register(fresh, key);
+		return fresh;
+	};
+};
+
+const getImgCached = makeWeakCached(getImg);
+```
