@@ -3799,3 +3799,54 @@ const makeWeakCached = (fn) => {
 
 const getImgCached = makeWeakCached(getImg);
 ```
+
+### Browser environment, specs
+
+1. Javascript can be used in many platforms like browser, web-server, coffee machine, etc. These platforms provide their own functions and objects to control them like browsers give control to web pages, node js gives server side functions.
+
+2. There are 3 object models
+
+   - **DOM (Document Object Model):** represents all page content as objects that can be modified. Keyword `document` is the main entry point this and can be used like `document.body.backgrouncColor = "red"`.
+   - **CSSOM (CSS Object Model):** object representing the CSS rules and stylesheets. CSSOM is used together with the DOM when we want to modify something in the document.
+   - **BOM (Browser Object Model):** epresents additional objects provided by the browser (host environment) for working with everything except the document. Like `navigator/alert/prompt/location` etc. They are not directly related to the document, but represent pure browser methods for communicating with the user.
+
+### DOM Tree
+
+1. DOM is represented as tree, nested tags are childrens of enclosing ones. All these can be accessed with `document.` keyword.
+
+   ```html
+   <!DOCTYPE html>
+   <html>
+   	<head>
+   		<title>About elk</title>
+   	</head>
+   	<body>
+   		The truth about elk.
+   	</body>
+   </html>
+   ```
+
+   Text can only be string, digits, next line, white spaces. like in above the text inside head is `next line` and 2 `white spaces` (just before title tag).
+
+   There are 2 exclusions.
+
+   - Spaces and newlines before `<head>` are ignored
+   - If we put something after `</body>`, then that is automatically moved inside the body, at the end, as the HTML spec requires that all content must be inside `<body>`. So there can’t be any spaces after `</body>`.
+
+   So if you don't want next line or white space like these jsut put everything in one line.
+
+2. Some autocorrections happens automatically like
+
+   - closing the tag if closing tag is not there.
+
+     ```html
+     <li>one</li>
+     <li>two</li>
+     <li>three</li>
+     ```
+
+     These tags will be closed in DOM
+
+   - tables will always have a tbody even if we don't put it there.
+
+3. We see comments in the DOM too even though they don't make any visual change to the content, because there is a rule that if something is in HTML it will be there in DOM too.
