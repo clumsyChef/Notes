@@ -3850,3 +3850,59 @@ const getImgCached = makeWeakCached(getImg);
    - tables will always have a tbody even if we don't put it there.
 
 3. We see comments in the DOM too even though they don't make any visual change to the content, because there is a rule that if something is in HTML it will be there in DOM too.
+
+### Walking the DOM
+
+1. `document` points to the root of the page elements, the main object. On top there are 3 nodes, `<html>, <head>, <body>`.
+
+   ```html
+   document.documentElement =
+   <html>
+   	document.head =
+   	<head>
+   		document.body =
+   		<body></body>
+   	</head>
+   </html>
+   ```
+
+   `document.body` can be null if the script tag is in head, as while running script body is not there.
+
+   ** In HTML null means don't exist **
+
+2. Every element can have a child node, comment and some text. For getting the child node we use `elem.childNodes` this returns an array like structure which can be iterated with `for...of` loop, but its not actually an array, so we cannot use array methods on it. Although we can convert it to an array by using `Array.from(...)`.
+
+3. Similary like child we can get siblings and parent too by using `elem.nextSibling` or `elem.previousSibling` and `elem.parentElement`.
+
+   There is some exception here for parent one, there are 2 ways to get it: `elem.parentElement` and `elem.parentNode`.
+
+   The parentElement property returns the “element” parent, while parentNode returns “any node” parent. These properties are usually the same: they both get the parent.
+
+   With the one exception of document.documentElement:
+
+   ```js
+   console.log(document.documentElement.parentNode); // document
+   console.log(document.documentElement.parentElement); // null
+   ```
+
+   This is because this should return `document` but its not a element node, so `parentNode` returns it and `parentElement` does not.
+
+4. Similary there are for tables too
+
+   - `table.rows` – the collection of `<tr>` elements of the table.
+   - `table.caption/tHead/tFoot` – references to elements `<caption>, <thead>, <tfoot>`.
+   - `table.tBodies` – the collection of `<tbody>` elements (can be many according to the standard, but there will always be at least one – even if it is not in the source HTML, the browser will put it in the DOM).
+
+   **\<thead>, \<tfoot>, \<tbody> elements provide the rows property:**
+
+   - `tbody.rows` – the collection of `<tr>` inside.
+
+   **\<tr>:**
+
+   - `tr.cells` – the collection of `<td>` and `<th>` cells inside the given `<tr>`.
+   - `tr.sectionRowIndex` – the position (index) of the given `<tr>` inside the enclosing `<thead>/<tbody>/<tfoot>`.
+   - `tr.rowIndex` – the number of the `<tr>` in the table as a whole (including all table rows).
+
+   **\<td> and \<th>:**
+
+   - td.cellIndex – the number of the cell inside the enclosing `<tr>`.
