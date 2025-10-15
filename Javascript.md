@@ -3906,3 +3906,114 @@ const getImgCached = makeWeakCached(getImg);
    **\<td> and \<th>:**
 
    - td.cellIndex – the number of the cell inside the enclosing `<tr>`.
+
+### Node Properties
+
+1. Some element properties.
+
+   ```js
+   console.log(document.body.constructor.name); // HTMLBodyElement
+   console.log(document.body); // [object HTMLBodyElement]
+   console.log(document.body instanceof HTMLBodyElement); // true
+   console.log(document.body instanceof HTMLElement); // true
+   console.log(document.body instanceof Element); // true
+   console.log(document.body instanceof Node); // true
+   console.log(document.body instanceof EventTarget); // true
+   ```
+
+2. Node type
+
+   ```js
+   elem.nodeType == 1; // for element nodes,
+   elem.nodeType == 3; // for text nodes,
+   elem.nodeType == 9; // for the document object,
+   ```
+
+3. Nodename and tagname
+
+   ```js
+   console.log(document.body.nodeName); // BODY
+   console.log(document.body.tagName); // BODY
+   ```
+
+   ```html
+   <body>
+   	<!-- comment -->
+   	<script>
+   		// for comment
+   		alert(document.body.firstChild.tagName); // undefined (not an element)
+   		alert(document.body.firstChild.nodeName); // #comment
+
+   		// for document
+   		alert(document.tagName); // undefined (not an element)
+   		alert(document.nodeName); // #document
+   	</script>
+   </body>
+   ```
+
+4. Changing and getting the content.
+
+   - `innerHTML`: get the inner html of element with `elem.innerHTML`. We can also change the content with `elem.innerHTML = <p>something</p>`.
+
+     We can also use it like `elem.innerHTML += <p>something</p>` but in this remember that this doesn't just append, it actually re writes the whole content so both the code below does the same thing
+
+     ```js
+     elem.innerHTML += "...";
+     // is a shorter way to write:
+     elem.innerHTML = elem.innerHTML + "...";
+     ```
+
+     It first removes the whole content inside the elem then re-writes it. So every event listener things will be removed and we have to attach them again. All the images and all will be loaded again.
+
+   - `outerHTML`: gets the node with the element on which it is called. We can replace it also with `elem.outerHTML = <p>something</p>`.
+
+     ```html
+     <div id="elem">text</div>
+     <script>
+     	const elem = document.querySelector("#elem");
+     	elem.outerHTML = "<p>somthing</p>";
+     	// this code will remove the div#elem but the variable elem will still hold it.
+     </script>
+     ```
+
+5. Text node content
+
+   ```html
+   <body>
+   	Hello
+   	<!-- Comment -->
+   	<script>
+   		let text = document.body.firstChild;
+   		console.log(text.data); // Hello
+
+   		let comment = text.nextSibling;
+   		console.log(comment.data); // Comment
+   	</script>
+   </body>
+   ```
+
+   `.data` and `.nodeValue` is pretty much same.
+
+   For text nodes we can imagine a reason to read or modify them, but why comments?
+
+   Sometimes developers embed information or template instructions into HTML in them, like this:
+
+   ```html
+   <!-- if isAdmin -->
+   <div>Welcome, Admin!</div>
+   <!-- /if -->
+   ```
+
+6. textContent: returns the pure text inside the html tag without comments and other tags.
+
+7. all elements have a hidden attribute like `<p hidden>something</p>` which makes the element hidden and we can change the value of this attribute like `elem.hidden = true/false`. This works similar to `display: none` property of css. In the similar way other attributes can also be used with dot notation
+
+   ```html
+   <input type="text" id="elem" value="value" />
+
+   <script>
+   	alert(elem.type); // "text"
+   	alert(elem.id); // "elem"
+   	alert(elem.value); // value
+   </script>
+   ```
