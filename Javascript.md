@@ -4017,3 +4017,232 @@ const getImgCached = makeWeakCached(getImg);
    	alert(elem.value); // value
    </script>
    ```
+
+### Attributes and properties
+
+1. DOM properties:
+
+   - We can add our own properties if we want
+
+   ```js
+   document.body.myData = {
+   	name: "Caesar",
+   	title: "Imperator",
+   };
+
+   console.log(document.body.myData.title); // Imperator
+   ```
+
+   - We can add methods as well:
+
+   ```js
+   document.body.sayTagName = function () {
+   	console.log(this.tagName);
+   };
+
+   document.body.sayTagName();
+   ```
+
+   - We can add properties to all elements too:
+
+   ```js
+   Element.prototype.sayHi = function () {
+   	console.log(`Hello, I'm ${this.tagName}`);
+   };
+
+   document.documentElement.sayHi(); // Hello, I'm HTML
+   document.body.sayHi(); // Hello, I'm BODY
+   ```
+
+2. HTML attributes:
+
+   - There are 2 types of attributes, standard and non-standard. Standard are the ones which are predefined like "id", "class", etc. Non-Standard are the ones that are custom defined.
+
+   ```html
+   <body id="test" something="non-standard">
+   	<script>
+   		alert(document.body.id); // test
+   		// non-standard attribute does not yield a property
+   		alert(document.body.something); // undefined
+   	</script>
+   </body>
+   ```
+
+   But there are some attributes which are standard for some element and non-standard for others like "type", which is standard for input elements but for div its non standard.
+
+   To check/get/set/remove these attributes, be standard or non-standard we can use below options
+
+   - `elem.hasAttribute(name)` – checks for existence.
+   - `elem.getAttribute(name)` – gets the value.
+   - `elem.setAttribute(name, value)` – sets the value.
+   - `elem.removeAttribute(name)` – removes the attribute.
+
+   HTML attributes have the following features:
+
+   - Their name is case-insensitive (id is same as ID).
+   - Their values are always strings.
+
+3. Property-attribute synchronization
+
+   - When a standard attribute changes, the corresponding property is auto-updated, and (with some exceptions) vice versa.
+
+   ```html
+   <input />
+
+   <script>
+   	let input = document.querySelector("input");
+
+   	// attribute => property
+   	input.setAttribute("id", "id");
+   	console.log(input.id); // id (updated)
+
+   	// property => attribute
+   	input.id = "newId";
+   	console.log(input.getAttribute("id")); // newId (updated)
+   </script>
+   ```
+
+   But there is exception for value property
+
+   ```html
+   <input />
+
+   <script>
+   	let input = document.querySelector("input");
+
+   	// attribute => property
+   	input.setAttribute("value", "text");
+   	console.log(input.value); // text
+
+   	// NOT property => attribute
+   	input.value = "newValue";
+   	console.log(input.getAttribute("value")); // text (not updated!)
+   </script>
+   ```
+
+   In above changing the attribute value updates the property but changing the property don't affect the attribute.
+
+4. DOM properties are typed
+
+   - DOM properties are mostly strings but some exceptions
+
+   ```html
+   <input id="input" type="checkbox" checked /> checkbox
+
+   <script>
+   	console.log(input.getAttribute("checked")); // the attribute value is: empty string
+   	console.log(input.checked); // the property value is: true
+   </script>
+   ```
+
+   ```html
+   <div id="div" style="color:red;font-size:120%">Hello</div>
+
+   <script>
+   	// string
+   	console.log(div.getAttribute("style")); // color:red;font-size:120%
+
+   	// object
+   	console.log(div.style); // [object CSSStyleDeclaration]
+   	console.log(div.style.color); // red
+   </script>
+   ```
+
+   ```html
+   <a id="a" href="#hello">link</a>
+   <script>
+   	// attribute
+   	console.log(a.getAttribute("href")); // #hello
+
+   	// property
+   	console.log(a.href); // full URL in the form http://site.com/page#hello
+   </script>
+   ```
+
+5. Non-standard attributes, dataset: These are used when we are trying to pass the custom data for JS to be used.
+
+   ```html
+   <!-- mark the div to show "name" here -->
+   <div show-info="name"></div>
+   <!-- and age here -->
+   <div show-info="age"></div>
+
+   <script>
+   	// the code finds an element with the mark and shows what's requested
+   	let user = {
+   		name: "Pete",
+   		age: 25,
+   	};
+
+   	for (let div of document.querySelectorAll("[show-info]")) {
+   		// insert the corresponding info into the field
+   		let field = div.getAttribute("show-info");
+   		div.innerHTML = user[field]; // first Pete into "name", then 25 into "age"
+   	}
+   </script>
+   ```
+
+   - We can use these for css which can be changed
+
+   ```html
+   <style>
+   	/* styles rely on the custom attribute "order-state" */
+   	.order[order-state="new"] {
+   		color: green;
+   	}
+
+   	.order[order-state="pending"] {
+   		color: blue;
+   	}
+
+   	.order[order-state="canceled"] {
+   		color: red;
+   	}
+   </style>
+
+   <div class="order" order-state="new">A new order.</div>
+
+   <div class="order" order-state="pending">A pending order.</div>
+
+   <div class="order" order-state="canceled">A canceled order.</div>
+
+   <script>
+   	// a bit simpler than removing old/adding a new class
+   	div.setAttribute("order-state", "canceled");
+   </script>
+   ```
+
+   - But for this we don't use them directly but rather with dataset keyword.
+
+   ```html
+   <style>
+   	.order[data-order-state="new"] {
+   		color: green;
+   	}
+
+   	.order[data-order-state="pending"] {
+   		color: blue;
+   	}
+
+   	.order[data-order-state="canceled"] {
+   		color: red;
+   	}
+   </style>
+
+   <div id="order" class="order" data-order-state="new">A new order.</div>
+
+   <script>
+   	// read
+   	alert(order.dataset.orderState); // new
+
+   	// modify
+   	order.dataset.orderState = "pending"; // (*)
+   </script>
+   ```
+
+   Above you can see that multiword attributes like data-order-state become camel-cased: dataset.orderState.
+
+So,
+
+- **Attributes – is what’s written in HTML.**
+- **Properties – is what’s in DOM objects.**
