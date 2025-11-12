@@ -4246,3 +4246,116 @@ So,
 
 - **Attributes – is what’s written in HTML.**
 - **Properties – is what’s in DOM objects.**
+
+### Modifying the document
+
+1. Methods to create new nodes:
+
+   - `document.createElement(tag)` – creates an element with the given tag,
+   - `document.createTextNode(value)` – creates a text node (rarely used),
+   - `elem.cloneNode(deep)` – clones the element, if deep==true then with all descendants.
+
+2. Insertion and removal:
+
+   - `node.append(...nodes or strings)` – insert into node, at the end,
+   - `node.prepend(...nodes or strings)` – insert into node, at the beginning,
+   - `node.before(...nodes or strings)` – insert right before node,
+   - `node.after(...nodes or strings)` – insert right after node,
+   - `node.replaceWith(...nodes or strings)` – replace node.
+   - `node.remove()` –- remove the node.
+
+   **Text strings are inserted “as text”.**
+
+3. There are also “old school” methods:
+
+   - `parent.appendChild(node)`
+   - `parent.insertBefore(node, nextSibling)`
+   - `parent.removeChild(node)`
+   - `parent.replaceChild(newElem, node)`
+
+   **All these methods return node.**
+
+4. Given some HTML in html, elem.insertAdjacentHTML(where, html) inserts it depending on the value of where:
+
+   - `"beforebegin"` – insert html right before elem,
+   - `"afterbegin"` – insert html into elem, at the beginning,
+   - `"beforeend"` – insert html into elem, at the end,
+   - `"afterend"` – insert html right after elem.
+
+   **Also there are similar methods, elem.insertAdjacentText and elem.insertAdjacentElement, that insert text strings and elements, but they are rarely used.**
+
+5. To append HTML to the page before it has finished loading:
+
+   - `document.write(html)`
+
+   **After the page is loaded such a call erases the document. Mostly seen in old scripts.**
+
+### Styles and classes
+
+1. To get the class name, like complete class name we can use `elem.className` which will return the class name as string like "class-1 class 2"
+
+2. To get the list of class in kind of an array format we can use `elem.classList` this will return it in an array like format, and also these have functions like `add`, `remove`, `toggle` that can be use to manipulate classes.
+
+3. To change the styles we can use the style property like `elem.style.border` to set or get the border. But this is an old way as it creates problems with units like if we use `elem.style.top = 10` it will not return 10 when getting it the same way, rather will return the empty string. So we have to use the `10px` with unit.
+
+4. We cannot change the whole style with `elem.style` as this is read-only, we have to change every style individually. To overcome this we can use `cssText`
+
+   ```html
+   <div id="div">Button</div>
+
+   <script>
+   	// we can set special style flags like "important" here
+   	div.style.cssText = `color: red !important;
+         background-color: yellow;
+         width: 100px;
+         text-align: center;
+      `;
+
+   	console.log(div.style.cssText);
+   </script>
+   ```
+
+5. **getComputedStyle(element, [pseudo]):** The style property operates only on the value of the "style" attribute, without any CSS cascade. So we can’t read anything that comes from CSS classes using elem.style.
+
+   For instance, here style doesn’t see the margin:
+
+   ```html
+   <head>
+   	<style>
+   		body {
+   			color: red;
+   			margin: 5px;
+   		}
+   	</style>
+   </head>
+   <body>
+   	The red text
+   	<script>
+   		console.log(document.body.style.color); // empty
+   		console.log(document.body.style.marginTop); // empty
+   	</script>
+   </body>
+   ```
+
+   But what if we need, say, to increase the margin by 20px? We would want the current value of it.
+
+   ```html
+   <head>
+   	<style>
+   		body {
+   			color: red;
+   			margin: 5px;
+   		}
+   	</style>
+   </head>
+   <body>
+   	<script>
+   		let computedStyle = getComputedStyle(document.body);
+
+   		// now we can read the margin and the color from it
+
+   		console.log(computedStyle.marginTop); // 5px
+   		console.log(computedStyle.color); // rgb(255, 0, 0)
+   	</script>
+   </body>
+   ```
