@@ -4377,3 +4377,40 @@ All properties are read-only except scrollLeft/scrollTop that make the browser s
 We can use the above properties to calculate different things like, scroll bottom height i.e, what is the remaining scroll height and we can calculate it with
 
 `let scrollBottom = elem.scrollHeight - elem.scrollTop - elem.clientHeight;`
+
+To get the css properties of an element in the best way is to use `getComputedStyle` like `getComputedStyle(elem).width`
+
+### Window sizes and scrolling
+
+- To get window width and height, we can use the `clientWidth/clientHeight` of `document.documentElement` like `document.documentElement.clientWidth/document.documentElement.clientHeight`.
+- To get the complete width and height of the document we can use `document.documentElement.scrollWidth/scrollHeight`
+
+  ```js
+  let scrollHeight = Math.max(
+  	document.body.scrollHeight,
+  	document.documentElement.scrollHeight,
+  	document.body.offsetHeight,
+  	document.documentElement.offsetHeight,
+  	document.body.clientHeight,
+  	document.documentElement.clientHeight
+  );
+
+  console.log("Full document height, with scrolled out part: " + scrollHeight);
+  // We use above formula because of the differences in the browsers and stuff.
+  ```
+
+- ```js
+  console.log("Current scroll from the top: " + window.pageYOffset);
+  console.log("Current scroll from the left: " + window.pageXOffset);
+  ```
+
+  - `window.pageXOffset` is an alias of `window.scrollX`
+  - `window.pageYOffset` is an alias of `window.scrollY`
+
+- `scrollBy(x, y)`: scrolls the page relative to its current position, eg. `scrollBy(0, 10)` scrolls the page 10px down.
+
+- `scrollTo(pageX,pageY)`: scrolls the page to absolute coordinates, so that the top-left corner of the visible part has coordinates `(pageX, pageY) ` relative to the document’s top-left corner.
+
+- `elem.scrollIntoView(top)`: scrolls the page to make the elem visible. If `top=true` then elem will appear on top, if `top=false` then elem will appear at the bottom.
+
+- `document.body.style.overflow = "hidden"`: will stop the scroll alltogether, to remove this we can do `document.body.style.overflow = ""`
